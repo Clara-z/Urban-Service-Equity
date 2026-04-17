@@ -499,7 +499,7 @@ def compute_equity_scores(df_eq: pd.DataFrame) -> Tuple[pd.DataFrame, dict]:
         + wn[4] * df_eq["N5"]
     )
     # Percentage Transformation here - Kai
-    # try 3: log + clip + minmax -> 0-100
+    # try 4: log + clip + minmax -> 0-100
     df_eq["raw_equity"] = df_eq["performance_score"] / (df_eq["need_score"] + 1e-6)
     upper = np.percentile(df_eq["raw_equity"], 99)
     clipped = np.clip(df_eq["raw_equity"], df_eq["raw_equity"].min(), upper)
