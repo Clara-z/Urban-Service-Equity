@@ -84,6 +84,9 @@ const STOPWORDS = new Set([
 
 // --- DOM ---
 const els = {
+  floatingChatDock: document.getElementById("floatingPublicChat"),
+  floatingChatBody: document.getElementById("floatingPublicChatBody"),
+  floatingChatToggle: document.getElementById("publicChatToggle"),
   contextHint: document.getElementById("publicChatContextHint"),
   chatStatus: document.getElementById("publicChatStatus"),
   chatMessages: document.getElementById("publicChatMessages"),
@@ -627,6 +630,14 @@ async function onDashboardReady(detail) {
 }
 
 function bindEvents() {
+  els.floatingChatToggle?.addEventListener("click", () => {
+    const dock = els.floatingChatDock;
+    if (!dock) return;
+    const collapsed = dock.classList.toggle("isCollapsed");
+    els.floatingChatToggle.textContent = collapsed ? "+" : "−";
+    els.floatingChatToggle.setAttribute("aria-expanded", String(!collapsed));
+  });
+
   els.sendBtn?.addEventListener("click", () => send());
   els.clearBtn?.addEventListener("click", () => clearChat());
   els.userInput?.addEventListener("keydown", (e) => {

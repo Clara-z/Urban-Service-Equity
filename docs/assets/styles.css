@@ -721,6 +721,50 @@ body.heroCollapsed .scrollCue{opacity:0;pointer-events:none}
 .chatFooterText a{
   color:rgba(200, 214, 255, .95);
 }
+.floatingChatDock{
+  position:fixed;
+  right:16px;
+  bottom:16px;
+  width:min(360px, calc(100vw - 24px));
+  min-height:0;
+  max-height:min(70vh, 520px);
+  z-index:1100;
+  box-shadow:0 18px 44px rgba(0,0,0,.45);
+}
+.floatingChatHeaderActions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.floatingChatToggle{
+  width:28px;
+  height:28px;
+  min-width:28px;
+  padding:0;
+  font-size:16px;
+  line-height:1;
+}
+.floatingChatBody{
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+}
+.floatingChatDock .chatMessages{
+  min-height:170px;
+  max-height:260px;
+}
+.floatingChatDock #publicChatInput{
+  min-height:66px;
+}
+.floatingChatDock.isCollapsed{
+  max-height:none;
+}
+.floatingChatDock.isCollapsed .floatingChatBody{
+  display:none;
+}
+.chatConfigCompat{
+  display:none;
+}
 
 @media (max-width: 980px){
   .main{grid-template-columns:1fr}
@@ -741,5 +785,16 @@ body.heroCollapsed .scrollCue{opacity:0;pointer-events:none}
   .bentoSide{grid-template-rows:auto}
   .mapControlsRow{padding:10px 12px 0}
   .mapControlsRow .controls{padding:10px}
+  .floatingChatDock{
+    left:12px;
+    right:12px;
+    bottom:12px;
+    width:auto;
+    max-height:62vh;
+  }
+  .floatingChatDock .chatMessages{
+    min-height:140px;
+    max-height:220px;
+  }
 }
 
