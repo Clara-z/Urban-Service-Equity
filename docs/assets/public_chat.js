@@ -5,7 +5,7 @@ const DATA_BASE = new URL("../outputs/", import.meta.url).href;
 const DATA_RENT_CSV = new URL("rent_dataset_module2.csv", DATA_BASE).href;
 const SOCIOPAPER_TXT = new URL("../sociopaper/zahnow1.txt", import.meta.url).href;
 
-const STORAGE_KEY = "equity_public_chat_v1";
+const PROMPT_LAB_STORAGE_KEY = "equity_prompt_lab_v1";
 const MAX_HISTORY = 16;
 const SOCIOPAPER_ID = "zahnow1";
 const SOCIOPAPER_TOP_K = 5;
@@ -108,23 +108,53 @@ const state = {
   sociopaperChunks: [],
   /** @type {{ addr: string; hood: string; rent: number; beds: number | null; baths: number | null; sqft: number | null; year: number | null; district: number | null }[]} */
   rentListings: [],
+  settings: {
+    model: "gpt-4o",
+    customModel: "",
+    ragApiBase: window.RAG_API_BASE || "https://urban-service-equity.vercel.app",
+    temperature: 0.3,
+    maxTokens: 900,
+    topK: 8,
+    contextMode: "cluster",
+    clusterContext: "0",
+    gridContext: "",
+    systemPrompt: "",
+  },
   ready: false,
 };
 
-const DEFAULT_SYSTEM_PROMPT = `You are the assistant inside an urban service equity dashboard, but you behave like a normal helpful chat model: answer the user's actual question in a direct, natural tone.
+const DEFAULT_SYSTEM_PROMPT = `You are an urban service equity assistant.
+Your job is to answer user questions clearly using dashboard data and policy reasoning.
 
-Refusals (forbidden):
-- Do NOT answer with stiff scope refusals such as "I can only help with urban service equity" or "ask me about urban services" when the user asks something else. Never deflect harmless test questions.
+Rules:
+1) Separate your answer into: place-specific analysis, cluster-level analysis, and general recommendations.
+2) If evidence is uncertain, say what is uncertain.
+3) Cite concrete references when provided in context.
+4) Keep explanations concise and actionable.
+5) When sociology paper excerpts are included in the system message, ground relevant conceptual claims in those passages and cite them (e.g. zahnow1 chunk 3).
 
-How to answer:
-- Questions about this map, clusters, grids, fairness, services, or San Francisco housing in context: use the JSON context below; be concrete; say when something is uncertain.
-- General questions (definitions, machine learning, statistics, what a paper says, etc.): answer straight. Use normal technical vocabulary when it helps. The server also attaches retrieved "Paper excerpts" with [ref:n] labels—use them when relevant and cite like [ref:1]; if excerpts are off-topic, say that in one short clause and answer from general knowledge.
-- Optional sociology text (zahnow1 chunks) in the system message: use for social/urban questions when relevant; cite [zahnow1 chunk N]. Do not force paper citations for unrelated questions.
+You are an assistant with access to a sociology paper (zahnow1).
 
-Style:
-- Sound like a knowledgeable colleague, not a policy notice.
-- Keep answers concise. Avoid crutch phrases ("I'm here to assist…").
-- Do not use bold-quoted emphasis like **"..."**.`;
+Before answering, you must decide:
+
+1. Does the user's question require sociological reasoning?
+   - Yes if it involves:
+     - social behavior, communities, inequality, urban dynamics
+     - concepts like collective efficacy, social interaction, etc.
+   - No if it is:
+     - purely technical (coding, math, API usage)
+     - factual lookup without social interpretation
+
+2. If YES:
+   - Use the provided zahnow1 chunks when relevant
+   - Integrate concepts or findings from the paper
+   - Cite as [zahnow1 chunk N] when used
+
+3. If NO:
+   - Ignore zahnow1 completely
+   - Answer normally
+
+4. Never force citations if irrelevant`;
 
 const RESPONSE_STYLE_GUARD = `Formatting:
 - No bold-quoted emphasis patterns.
@@ -158,11 +188,21 @@ function setStatus(msg) {
   if (els.chatStatus) els.chatStatus.textContent = msg;
 }
 
-function loadSavedState() {
+function loadPromptLabState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(PROMPT_LAB_STORAGE_KEY);
     if (!raw) return;
     const saved = JSON.parse(raw);
+    state.settings.model = String(saved.model ?? state.settings.model);
+    state.settings.customModel = String(saved.customModel ?? "");
+    state.settings.ragApiBase = String(saved.ragApiBase ?? state.settings.ragApiBase);
+    state.settings.temperature = normalizeNumber(saved.temperature, 0.3);
+    state.settings.maxTokens = normalizeNumber(saved.maxTokens, 900);
+    state.settings.topK = normalizeNumber(saved.topK, 8);
+    state.settings.contextMode = String(saved.contextMode ?? state.settings.contextMode);
+    state.settings.clusterContext = String(saved.clusterContext ?? state.settings.clusterContext);
+    state.settings.gridContext = String(saved.gridContext ?? "");
+    state.settings.systemPrompt = String(saved.systemPrompt ?? DEFAULT_SYSTEM_PROMPT);
     state.chat = Array.isArray(saved.chat)
       ? saved.chat.slice(-MAX_HISTORY).map((m) => ({
           ...m,
@@ -174,13 +214,46 @@ function loadSavedState() {
   }
 }
 
-function saveState() {
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify({
-      chat: state.chat.slice(-MAX_HISTORY),
-    })
-  );
+function savePromptLabChatState() {
+  let base = {};
+  try {
+    const raw = localStorage.getItem(PROMPT_LAB_STORAGE_KEY);
+    if (raw) base = JSON.parse(raw) || {};
+  } catch {
+    base = {};
+  }
+  localStorage.setItem(PROMPT_LAB_STORAGE_KEY, JSON.stringify({ ...base, chat: state.chat.slice(-MAX_HISTORY) }));
+}
+
+function normalizeNumber(value, fallback) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function loadPromptLabSettings() {
+  state.settings.systemPrompt = DEFAULT_SYSTEM_PROMPT;
+  try {
+    const raw = localStorage.getItem(PROMPT_LAB_STORAGE_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    state.settings.model = String(saved.model ?? state.settings.model);
+    state.settings.customModel = String(saved.customModel ?? "");
+    state.settings.ragApiBase = String(saved.ragApiBase ?? state.settings.ragApiBase);
+    state.settings.temperature = normalizeNumber(saved.temperature, 0.3);
+    state.settings.maxTokens = normalizeNumber(saved.maxTokens, 900);
+    state.settings.topK = normalizeNumber(saved.topK, 8);
+    state.settings.contextMode = String(saved.contextMode ?? state.settings.contextMode);
+    state.settings.clusterContext = String(saved.clusterContext ?? state.settings.clusterContext);
+    state.settings.gridContext = String(saved.gridContext ?? "");
+    state.settings.systemPrompt = String(saved.systemPrompt ?? DEFAULT_SYSTEM_PROMPT);
+  } catch {
+    state.settings.systemPrompt = DEFAULT_SYSTEM_PROMPT;
+  }
+}
+
+function selectedModel() {
+  const custom = (state.settings.customModel || "").trim();
+  return custom || state.settings.model || "gpt-4o";
 }
 
 function isGridSelected() {
@@ -205,12 +278,23 @@ function updateContextHint() {
     els.contextHint.textContent = "Loading data…";
     return;
   }
-  if (isGridSelected()) {
+  loadPromptLabSettings();
+  const mode = state.settings.contextMode || "cluster";
+  if (mode === "global") {
+    els.contextHint.textContent = "Using global dashboard context";
+    return;
+  }
+  if (mode === "grid" && isGridSelected()) {
     const gid = String(els.selGridId.textContent || "").trim();
     els.contextHint.textContent = `Focused on the selected area (${gid})`;
     return;
   }
-  const c = reportClusterId();
+  if (mode === "grid") {
+    const gid = String(state.settings.gridContext || "").trim();
+    els.contextHint.textContent = gid ? `Focused on grid ${gid}` : "Grid mode is selected (no grid chosen)";
+    return;
+  }
+  const c = String(state.settings.clusterContext || "0");
   els.contextHint.textContent = `Focused on: ${clusterName(c)}`;
 }
 
@@ -228,19 +312,44 @@ function reindexFromDashboard() {
 }
 
 function contextPayload() {
+  const mode = state.settings.contextMode || "cluster";
+  const activeGrid = String(state.settings.gridContext || "").trim();
+  const activeCluster = String(state.settings.clusterContext || "0");
+
   const base = {
+    mode,
     modeling_notes: {
       overall_fairness_level: "0-100 index for how balanced service access and quality are across areas",
       top3_gap_factors: "top 3 factors with the largest differences from city average in each cluster",
     },
-    report_cluster_in_ui: reportClusterId(),
+    selected_cluster: activeCluster,
   };
 
-  if (isGridSelected()) {
-    const gid = String(els.selGridId.textContent || "").trim();
+  if (mode === "global") {
+    return {
+      ...base,
+      clusters: state.summaryRows,
+      cluster_names: state.meta?.config?.cluster_names ?? {},
+    };
+  };
+
+  if (mode === "cluster") {
+    return {
+      ...base,
+      cluster: activeCluster,
+      cluster_summary: state.summaryByCluster.get(activeCluster) ?? null,
+      top_features:
+        state.meta?.top3_features_per_cluster?.[activeCluster] ??
+        state.meta?.top3_features_per_cluster?.[Number(activeCluster)] ??
+        [],
+      heuristics: state.meta?.heuristics?.[activeCluster] ?? state.meta?.heuristics?.[Number(activeCluster)] ?? null,
+    };
+  }
+
+  if (activeGrid) {
+    const gid = activeGrid;
     const row = state.gridById.get(gid) ?? null;
     return {
-      mode: "grid",
       ...base,
       grid_id: gid,
       grid_record: row,
@@ -253,14 +362,12 @@ function contextPayload() {
     };
   }
 
-  const c = reportClusterId();
   return {
-    mode: "cluster",
     ...base,
-    cluster: c,
-    cluster_summary: state.summaryByCluster.get(c) ?? null,
-    top_features: state.meta?.top3_features_per_cluster?.[c] ?? state.meta?.top3_features_per_cluster?.[Number(c)] ?? [],
-    heuristics: state.meta?.heuristics?.[c] ?? state.meta?.heuristics?.[Number(c)] ?? null,
+    grid_id: "",
+    grid_record: null,
+    cluster_summary: null,
+    cluster_top_features: [],
   };
 }
 
@@ -526,7 +633,7 @@ function buildFullSystemPrompt(userQuery) {
       ? `\n\n${retrieveRentListings(userQuery)}`
       : "\n\nSan Francisco housing inventory CSV was not loaded; answer without inventing specific addresses."
     : "";
-  return `${DEFAULT_SYSTEM_PROMPT.trim()}\n\n${RESPONSE_STYLE_GUARD}\n\nContext payload (JSON):\n${payloadText}${paperBlock}${rentExcerpt}`;
+  return `${String(state.settings.systemPrompt || DEFAULT_SYSTEM_PROMPT).trim()}\n\n${RESPONSE_STYLE_GUARD}\n\nContext payload (JSON):\n${payloadText}${paperBlock}${rentExcerpt}`;
 }
 
 function bubble(role, text) {
@@ -535,7 +642,7 @@ function bubble(role, text) {
   const meta = document.createElement("div");
   meta.className = "msgMeta";
   meta.textContent = role === "assistant" ? "Assistant" : "You";
-  const body = document.createElement("div");
+  const body = document.createElement("pre");
   body.className = "msgBody";
   body.textContent = role === "assistant" ? sanitizeAssistantText(text) : text;
   wrap.appendChild(meta);
@@ -557,53 +664,65 @@ async function send() {
   if (!userText) return;
   if (!state.ready) return setStatus("Still loading dashboard data…");
 
-  const model = "gpt-4o";
-  const temperature = 0.5;
-  const maxTokens = 900;
-  const topK = 8;
+  loadPromptLabSettings();
+  const model = selectedModel();
+  const temperature = normalizeNumber(state.settings.temperature, 0.3);
+  const maxTokens = Math.max(128, normalizeNumber(state.settings.maxTokens, 900));
+  const topK = Math.max(1, normalizeNumber(state.settings.topK, 8));
+  const ragBase = String(state.settings.ragApiBase || "").trim();
+  if (!ragBase) return setStatus("Missing RAG API base URL");
+  window.RAG_API_BASE = ragBase;
+  const ragDebug = new URLSearchParams(location.search).get("ragDebug") === "1";
 
   state.chat.push({ role: "user", content: userText });
   state.chat = state.chat.slice(-MAX_HISTORY);
   els.userInput.value = "";
   renderChat();
-  setStatus("Thinking…");
-  saveState();
+  setStatus(`Calling RAG backend (${model})...`);
+  savePromptLabChatState();
 
   try {
-    const messages = [{ role: "system", content: buildFullSystemPrompt(userText) }, ...state.chat];
+    const systemPrompt = buildFullSystemPrompt(userText);
+    const messages = [{ role: "system", content: systemPrompt }, ...state.chat];
     const res = await ragChat({
       question: userText,
       messages,
-      systemPrompt: buildFullSystemPrompt(userText),
+      systemPrompt,
       model,
       topK,
       temperature,
       maxTokens,
+      debug: ragDebug,
     });
     const content = sanitizeAssistantText(String(res?.content ?? ""));
     const cites = Array.isArray(res?.citations) ? res.citations : [];
-    // Public chat: do not show sources/citations to end users.
-    void cites;
-    state.chat.push({ role: "assistant", content });
+    const dbg = res?.retrievalDebug;
+    const dbgBlock =
+      ragDebug && dbg
+        ? `\n\nRAG debug:\n- supabase: ${dbg.supabaseUrlHost || "(unknown)"}\n- key: ${dbg.keyType || "(unknown)"}\n- visible rows: ${
+            typeof dbg.visibleRowCount === "number" ? dbg.visibleRowCount : "(unknown)"
+          }\n- mode: ${dbg.retrievalMode || "(unknown)"}\n- titleHint: ${dbg.titleHint || "(none)"}`
+        : "";
+    state.chat.push({ role: "assistant", content: `${content}${dbgBlock}` });
     state.chat = state.chat.slice(-MAX_HISTORY);
     renderChat();
-    setStatus(cites.length ? `Ready (used ${cites.length} paper excerpts)` : "Ready");
-    saveState();
+    setStatus(`Response received (${cites.length} citations)`);
+    savePromptLabChatState();
   } catch (err) {
     const msg = String(err?.message || err);
-    state.chat.push({ role: "assistant", content: `Sorry — I could not get an answer.\n\n${msg}` });
+    state.chat.push({ role: "assistant", content: `Error: ${msg}` });
     state.chat = state.chat.slice(-MAX_HISTORY);
     renderChat();
-    setStatus("Error");
-    saveState();
+    setStatus("Request failed");
+    savePromptLabChatState();
   }
 }
 
 function clearChat() {
   state.chat = [];
   renderChat();
-  saveState();
-  setStatus("Cleared");
+  savePromptLabChatState();
+  setStatus("Chat cleared");
 }
 
 async function onDashboardReady(detail) {
@@ -620,17 +739,18 @@ async function onDashboardReady(detail) {
   }
 
   state.ready = true;
-  loadSavedState();
+  loadPromptLabState();
   renderChat();
   updateContextHint();
-  setStatus("Ready");
+  const n = state.rentListings.length;
+  setStatus(n ? `Ready (${n.toLocaleString()} SF inventory units)` : "Ready (housing inventory unavailable)");
 }
 
 function bindEvents() {
   els.sendBtn?.addEventListener("click", () => send());
   els.clearBtn?.addEventListener("click", () => clearChat());
   els.userInput?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       send();
     }
