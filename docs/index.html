@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Equity Dashboard — Map</title>
-    <link rel="stylesheet" href="assets/styles.css" />
+    <link rel="stylesheet" href="assets/styles.css?v=26" />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -19,6 +19,7 @@
       <div class="brand">
         <div class="title">Equity Dashboard</div>
         <div class="subtitle">Map (Equity-first) → Cluster report (ask a question below)</div>
+        <div style="font-size:11px;color:#f90;margin-top:4px;">DEBUG: deployed 2026-04-27 v26</div>
       </div>
     </header>
 
@@ -94,6 +95,7 @@
           <select id="colorMode">
             <option value="equity" selected>Equity score (0–100)</option>
             <option value="cluster">Cluster</option>
+            <option value="lisa">LISA cluster (spatial autocorrelation)</option>
           </select>
         </div>
 
@@ -121,6 +123,67 @@
       </div>
     </section>
 
+    <section class="panel metricsPanel">
+      <div class="panelHeader">
+        <div class="panelTitle">Key performance metrics</div>
+        <div class="panelMeta">311 service requests × SF housing inventory (combined dataset)</div>
+      </div>
+      <div class="metricsGrid">
+        <div class="metricCard metricCard--amber">
+          <div class="metricHead">
+            <span class="metricIcon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            </span>
+            <span class="metricLabel">Avg resolution time</span>
+          </div>
+          <div class="metricValueRow">
+            <span class="metricValue">11.8</span>
+            <span class="metricUnit">days</span>
+          </div>
+          <div class="metricSub">Mean days to close a 311 request across linked housing grids</div>
+        </div>
+        <div class="metricCard metricCard--rose">
+          <div class="metricHead">
+            <span class="metricIcon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18"/><path d="M5 20V9"/><path d="M10 20V5"/><path d="M15 20v-8"/><path d="M20 20v-4"/></svg>
+            </span>
+            <span class="metricLabel">Resolution spread</span>
+          </div>
+          <div class="metricValueRow">
+            <span class="metricValue">35.0</span>
+            <span class="metricUnit">days σ</span>
+          </div>
+          <div class="metricSub">Std. dev. of resolution days — large spread signals service inequity</div>
+        </div>
+        <div class="metricCard metricCard--blue">
+          <div class="metricHead">
+            <span class="metricIcon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>
+            </span>
+            <span class="metricLabel">Housing units analyzed</span>
+          </div>
+          <div class="metricValueRow">
+            <span class="metricValue">253,974</span>
+            <span class="metricUnit">units</span>
+          </div>
+          <div class="metricSub">Rows in SF housing inventory joined to 311 data (2024–2025)</div>
+        </div>
+        <div class="metricCard metricCard--teal">
+          <div class="metricHead">
+            <span class="metricIcon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v12H5.5L4 17.5z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg>
+            </span>
+            <span class="metricLabel">Linked 311 requests</span>
+          </div>
+          <div class="metricValueRow">
+            <span class="metricValue">367,568</span>
+            <span class="metricUnit">cases</span>
+          </div>
+          <div class="metricSub">Service requests matched to housing grid cells across 41 neighborhoods</div>
+        </div>
+      </div>
+    </section>
+
     <main class="main">
       <section id="mapPanel" class="panel mapPanel">
         <div class="panelHeader">
@@ -135,7 +198,7 @@
 
       <aside class="panel sidePanel">
         <div class="panelHeader">
-          <div class="panelTitle">Selection</div>
+          <div class="panelTitle" id="selPanelTitle">Selection</div>
           <div class="panelMeta">Click a point on the map</div>
         </div>
 
@@ -148,21 +211,32 @@
 
         <div id="selection" class="selection hidden">
           <div class="kv">
-            <div class="k">Grid</div>
+            <div class="k">Grid cell</div>
             <div class="v" id="selGridId">—</div>
           </div>
-          <div class="kv">
-            <div class="k">Cluster</div>
-            <div class="v" id="selCluster">—</div>
+
+          <div id="selClusterSection" class="hidden">
+            <div class="kv"><div class="k">Cluster</div><div class="v" id="selCluster">—</div></div>
+            <div class="kv"><div class="k">Grid cells in cluster</div><div class="v" id="selClusterN">—</div></div>
+            <div class="kv"><div class="k">Neighborhood</div><div class="v" id="selClusterNeighborhood">—</div></div>
+            <div class="kv"><div class="k">Equity Score mean</div><div class="v" id="selClusterEquityMean">—</div></div>
+            <div class="kv"><div class="k">Top 3 distinct features</div><div class="v" id="selClusterTop" style="line-height:1.8">—</div></div>
           </div>
-          <div class="kv">
-            <div class="k">Equity</div>
-            <div class="v" id="selEquity">—</div>
+
+          <div id="selEquitySection">
+            <div class="kv"><div class="k">Equity score</div><div class="v" id="selEquity">—</div></div>
+            <div class="kv"><div class="k">Neighborhood</div><div class="v" id="selEquityNeighborhood">—</div></div>
+            <div class="kv"><div class="k">Top 3 distinct features</div><div class="v" id="selTop" style="line-height:1.8">—</div></div>
           </div>
-          <div class="kv">
-            <div class="k">Top features (cluster)</div>
-            <div class="v" id="selTop">—</div>
+
+          <div id="selLisaSection" class="hidden">
+            <div class="kv"><div class="k">LISA quadrant</div><div class="v"><span id="selLisaQuadrant" class="lisaPill">—</span></div></div>
+            <div class="kv"><div class="k">Equity score</div><div class="v" id="selLisaEquity">—</div></div>
+            <div class="kv"><div class="k">Neighborhood</div><div class="v" id="selLisaNeighborhood">—</div></div>
+            <div class="kv"><div class="k">Local Moran's I</div><div class="v" id="selLisaI">—</div></div>
+            <div class="kv"><div class="k">Significance (p)</div><div class="v" id="selLisaP">—</div></div>
           </div>
+
           <div id="pointAdviceCompact" class="pointAdviceCompact hidden">
             <div class="label">This grid (preview)</div>
             <div id="pointAdviceCompactText" class="pointAdviceCompactText">—</div>
@@ -257,13 +331,13 @@
       <section class="panel">
         <div class="panelHeader">
           <div class="panelTitle">Root causes (z-score vs city avg)</div>
-          <div class="panelMeta">Top 6 by absolute magnitude</div>
+          <div class="panelMeta">Full feature profile vs city average</div>
         </div>
         <p class="smallNote">
-          Positive bars = above city average, negative = below. This is the “why” behind the cluster archetype.
+          Green = above city average · Red = below city average · White line = city average (0)
         </p>
         <div class="chartWrap">
-          <canvas id="zChart" height="170"></canvas>
+          <canvas id="zChart" height="260"></canvas>
         </div>
       </section>
 
@@ -291,9 +365,8 @@
           <div class="panelMeta" id="pointNeedPanelMeta">Select a point on the map for grid-level analysis</div>
         </div>
         <p class="smallNote" style="margin-top:0">
-          Uses each grid’s service/need feature signals (vs city) plus, when you provide them, your
-          <code>data/rent_dataset_module2.csv</code>, <code>data/grid_level_rent_311.csv</code>, and
-          <code>data/311_data.csv</code> for extra context. Cluster advice above is still the group-level view.
+          Uses each grid’s service/need feature signals (vs city) plus merged-grid 311 context from
+          <code>outputs/merged_rent_311.csv</code> and optional <code>outputs/grid_level_rent_311.csv</code>. Cluster advice above is still the group-level view.
         </p>
         <div class="split2">
           <div>
@@ -303,6 +376,86 @@
           <div>
             <div class="label">Suggested actions (this grid)</div>
             <div id="pointQueue" class="queueWrap">—</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="lowEquityPanel">
+        <div class="panelHeader">
+          <div class="panelTitle">Low Equity Neighborhoods</div>
+          <div class="panelMeta">Neighborhoods ranked by statistically significant low-equity cells (LL + LH)</div>
+        </div>
+        <div id="lowEquityCongregations" class="congTable">—</div>
+        <p class="smallNote" id="lowEquityHint">Click a neighborhood row to see a concise sample of underserved cells with street context.</p>
+        <div id="lowEquityCells" class="lowEqCells"></div>
+      </section>
+
+      <section class="panel" id="lisaGroupsPanel">
+        <div class="panelHeader">
+          <div class="panelTitle">LISA Quadrant — Underserved Groups</div>
+          <div class="panelMeta">Pick a neighborhood, then a low-equity significant cell (LL or LH)</div>
+        </div>
+        <p class="smallNote">
+          <b>LL</b> = low-equity cell surrounded by low-equity neighbors (underserved cluster).
+          <b>LH</b> = low-equity cell inside a higher-equity area (struggling pocket).
+        </p>
+        <div class="reportControls">
+          <div class="control">
+            <label for="lisaNbhdSel">Neighborhood</label>
+            <select id="lisaNbhdSel"></select>
+          </div>
+          <div class="control">
+            <label for="lisaCellSel">Grid cell</label>
+            <select id="lisaCellSel"></select>
+          </div>
+        </div>
+        <div id="lisaCellContext" class="equityCellContext emptyResult">
+          Select a neighborhood and an underserved cell to view context and interventions.
+        </div>
+        <div class="niStack">
+          <div id="lisaCellNeeds" class="niStackInner"></div>
+        </div>
+      </section>
+
+      <section class="panel" id="equityCellPanel">
+        <div class="panelHeader">
+          <div class="panelTitle">Needs and Intervention — by Equity Score</div>
+          <div class="panelMeta">Choose a neighborhood, then an LL grid cell for focused intervention context</div>
+        </div>
+        <div class="reportControls">
+          <div class="control">
+            <label for="equityCellNbhd">Neighborhood</label>
+            <select id="equityCellNbhd"></select>
+          </div>
+          <div class="control">
+            <label for="equityCellId">Grid cell</label>
+            <select id="equityCellId"></select>
+          </div>
+        </div>
+        <div id="equityCellContext" class="equityCellContext emptyResult">
+          Select a neighborhood and LL grid cell to see contextualized needs and actions.
+        </div>
+        <div class="niStack">
+          <div id="equityCellNeeds" class="niStackInner"></div>
+        </div>
+      </section>
+
+      <section class="panel" id="cellLookupPanel">
+        <div class="panelHeader">
+          <div class="panelTitle">Grid Cell → Street Name</div>
+          <div class="panelMeta">Type a grid ID for street-level location context</div>
+        </div>
+        <div class="cellLookup">
+          <div class="cellLookupRow">
+            <label for="cellLookupInput" class="cellLookupLabel">Grid cell ID</label>
+            <input id="cellLookupInput" class="cellLookupInput" type="text" inputmode="numeric" placeholder="e.g. 1234" autocomplete="off" />
+            <button id="cellLookupBtn" class="btn">Look up</button>
+          </div>
+          <div class="cellLookupHint">
+            Resolves the cell centroid via OpenStreetMap Nominatim. Results are cached in your browser.
+          </div>
+          <div id="cellLookupResult" class="cellLookupResult emptyResult">
+            Enter a grid cell ID and press <b>Look up</b> to see its street-level descriptor.
           </div>
         </div>
       </section>
@@ -322,6 +475,14 @@
             <pre id="pcaN" class="codeBox">—</pre>
           </div>
         </div>
+      </section>
+
+      <section class="panel hidden">
+        <div class="panelHeader">
+          <div class="panelTitle">Cluster intervention cards (compat)</div>
+          <div class="panelMeta">Hidden compatibility target</div>
+        </div>
+        <div id="needsAndInterventions">—</div>
       </section>
     </main>
 
@@ -361,19 +522,8 @@
       <input id="temperature" type="number" value="0.5" />
       <input id="maxTokens" type="number" value="900" />
       <input id="topK" type="number" value="8" />
-      <select id="contextMode">
-        <option value="cluster" selected>cluster</option>
-      </select>
-      <select id="clusterContext">
-        <option value="0" selected>0</option>
-        <option value="1">1</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-      </select>
-      <input id="gridContext" type="text" value="" />
       <textarea id="systemPrompt"></textarea>
       <textarea id="contextPreview"></textarea>
-      <button id="refreshContext" type="button">Refresh context</button>
     </section>
 
     <script
@@ -381,8 +531,8 @@
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
-    <script type="module" src="assets/app.js"></script>
-    <script type="module" src="assets/chat.js"></script>
+    <script type="module" src="assets/app.js?v=26"></script>
+    <script type="module" src="assets/chat.js?v=26"></script>
   </body>
 </html>
 

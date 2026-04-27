@@ -29,7 +29,7 @@ Thumbs.db
 .superpowers/
 
 # Pipeline outputs (regenerate: python run_pipeline.py ...)
-/outputs/
+# /outputs/
 /outputs_full/
 # /docs/outputs/*
 !/docs/outputs/.gitkeep

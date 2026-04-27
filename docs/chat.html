@@ -2,148 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta http-equiv="refresh" content="0; url=./index.html#floatingPublicChat" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Equity Dashboard — Prompt Lab</title>
-    <link rel="stylesheet" href="assets/styles.css" />
-    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <title>Redirecting to Main Chat</title>
+    <script>
+      window.location.replace("./index.html#floatingPublicChat");
+    </script>
   </head>
   <body>
-    <header class="topbar">
-      <div class="brand">
-        <div class="title">Prompt Lab (Developer)</div>
-        <div class="subtitle">Test model prompts with dashboard context awareness</div>
-      </div>
-      <div class="controls">
-        <a class="btn secondary" href="./index.html">Back to map</a>
-        <a class="btn secondary" href="./index.html#report">Cluster report</a>
-      </div>
-    </header>
-
-    <main class="main chatMain">
-      <section class="panel chatConfigPanel">
-        <div class="panelHeader">
-          <div class="panelTitle">Provider + Prompt Settings</div>
-          <div class="panelMeta">Developer-only controls (remove later)</div>
-        </div>
-
-        <div class="chatConfigBody">
-          <div class="control">
-            <label for="modelSelect">Model</label>
-            <select id="modelSelect">
-              <optgroup label="OpenAI">
-                <option value="gpt-4o" selected>gpt-4o (strong general)</option>
-                <option value="gpt-4.1-mini">gpt-4.1-mini (balanced default)</option>
-                <option value="gpt-4o-mini">gpt-4o-mini (cheap/fast)</option>
-                
-                <option value="gpt-4.1">gpt-4.1 (strong reasoning)</option>
-                <option value="gpt-4.1-nano">gpt-4.1-nano (very fast baseline)</option>
-              </optgroup>
-              <optgroup label="Anthropic">
-                <option value="claude-3-5-haiku-latest">claude-3-5-haiku-latest (cheap/fast)</option>
-                <option value="claude-3-5-sonnet-latest">claude-3-5-sonnet-latest (balanced)</option>
-                <option value="claude-3-7-sonnet-latest">claude-3-7-sonnet-latest (strong)</option>
-                <option value="claude-3-opus-latest">claude-3-opus-latest (heavy)</option>
-              </optgroup>
-              <optgroup label="Google">
-                <option value="gemini-1.5-flash">gemini-1.5-flash (cheap/fast)</option>
-                <option value="gemini-2.0-flash">gemini-2.0-flash (balanced)</option>
-                <option value="gemini-1.5-pro">gemini-1.5-pro (strong context)</option>
-              </optgroup>
-            </select>
-          </div>
-
-          <div class="control">
-            <label for="customModel">Custom model ID (optional override)</label>
-            <input id="customModel" type="text" placeholder="e.g. gpt-4.1, claude-3-7-sonnet-latest" />
-          </div>
-
-          <div class="control">
-            <label for="apiKey">API key (dev only)</label>
-            <input id="apiKey" type="password" placeholder="Paste key for selected provider" />
-          </div>
-
-          <div class="control">
-            <label for="ragApiBase">RAG API base (Vercel)</label>
-            <input id="ragApiBase" type="text" placeholder="https://urban-service-equity.vercel.app" />
-            <div class="legendHint" style="margin-top:6px">
-              Prompt Lab will call <code>/api/chat</code> on this backend and display returned citations.
-            </div>
-          </div>
-
-          <div class="control">
-            <label for="temperature">Temperature</label>
-            <input id="temperature" type="number" min="0" max="2" step="0.1" value="0.3" />
-          </div>
-
-          <div class="control">
-            <label for="maxTokens">Max tokens</label>
-            <input id="maxTokens" type="number" min="128" max="4000" step="1" value="900" />
-          </div>
-
-          <div class="control">
-            <label for="topK">Top-K retrieved chunks</label>
-            <input id="topK" type="number" min="1" max="20" step="1" value="8" />
-          </div>
-
-          <div class="control">
-            <label for="contextMode">Context mode</label>
-            <select id="contextMode">
-              <option value="global" selected>Global dashboard context</option>
-              <option value="cluster">Selected cluster context</option>
-              <option value="grid">Specific grid context</option>
-            </select>
-          </div>
-
-          <div class="control">
-            <label for="clusterContext">Cluster (for cluster mode)</label>
-            <select id="clusterContext">
-              <option value="0">Cluster A (0)</option>
-              <option value="1">Cluster B (1)</option>
-              <option value="2">Cluster C (2)</option>
-              <option value="3">Cluster D (3)</option>
-            </select>
-          </div>
-
-          <div class="control">
-            <label for="gridContext">Grid ID (for grid mode)</label>
-            <input id="gridContext" type="text" placeholder="e.g. 12345" />
-          </div>
-
-          <div class="control">
-            <label for="systemPrompt">System prompt template</label>
-            <textarea id="systemPrompt" class="promptBox" rows="10"></textarea>
-          </div>
-
-          <div class="control">
-            <label for="contextPreview">Resolved context payload</label>
-            <textarea id="contextPreview" class="promptBox" rows="10"></textarea>
-          </div>
-        </div>
-      </section>
-
-      <section class="panel chatPanel">
-        <div class="panelHeader">
-          <div class="panelTitle">Chat</div>
-          <div class="panelMeta" id="chatStatus">Ready</div>
-        </div>
-
-        <div id="chatMessages" class="chatMessages"></div>
-
-        <div class="chatComposer">
-          <textarea id="userInput" rows="4" placeholder="Ask a question about equity, clusters, interventions, or a specific place..."></textarea>
-          <div class="chatActions">
-            <button id="refreshContext" class="btn secondary">Refresh context</button>
-            <button id="clearChat" class="btn secondary">Clear chat</button>
-            <button id="sendBtn" class="btn">Send</button>
-          </div>
-        </div>
-
-        <div class="hint" style="padding:12px">
-          Note: the backend holds the provider key(s). This page only controls prompt + model for testing.
-        </div>
-      </section>
-    </main>
-
-    <script type="module" src="assets/chat.js"></script>
+    <p>Redirecting to the unified main-page chat…</p>
+    <p><a href="./index.html#floatingPublicChat">Open chat</a></p>
   </body>
 </html>

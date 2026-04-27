@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+from copy import deepcopy
 import json
 import os
+import shutil
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
@@ -17,11 +19,39 @@ from sklearn.preprocessing import StandardScaler
 # Defaults (mirrors DB_MVP.ipynb)
 # -----------------------------
 
-# Primary data path (Google Colab + Drive). Override with --input or env MERGED_RENT_311_CSV.
-DEFAULT_INPUT_CSV = os.environ.get(
-    "MERGED_RENT_311_CSV",
-    "/content/drive/My Drive/243 Group 2/Module 2/data/merged_rent_311.csv",
-)
+_PATH_TO_DATA = "/content/drive/My Drive/243 Group 2/Module 2/data/"
+_GDRIVE_CSV = "/content/drive/My Drive/243 Group 2/Module 2/data/merged_rent_311.csv"
+_LOCAL_CSV = "/Users/kylechang/Documents/Claude Projects/Urban-Service-Equity/merged_rent_311.csv"
+_REPO_DIR = os.path.dirname(os.path.abspath(__file__))
+_INPUT_CANDIDATES = [
+    _GDRIVE_CSV,
+    os.path.join(_REPO_DIR, "docs", "outputs", "merged_rent_311.csv"),
+    os.path.join(_REPO_DIR, "merged_rent_311.csv"),
+    os.path.join(_REPO_DIR, "Urban_service-equity-kai-new", "merged_rent_311.csv"),
+    os.path.join(_REPO_DIR, "Urban-Service-Equity-kai-new", "merged_rent_311.csv"),
+    _LOCAL_CSV,
+]
+
+
+def _resolve_default_csv() -> str:
+    # Priority: explicit env override -> first existing known candidate.
+    if env := os.environ.get("MERGED_RENT_311_CSV"):
+        return env
+    for p in _INPUT_CANDIDATES:
+        if os.path.isfile(p):
+            return p
+    # Fall back to primary expected path for explicit error messaging.
+    return _GDRIVE_CSV
+
+
+def _first_existing_path(paths: List[str]) -> str | None:
+    for p in paths:
+        if os.path.isfile(p):
+            return p
+    return None
+
+
+DEFAULT_INPUT_CSV = _resolve_default_csv()
 
 CLUSTER_FEATURES_DEFAULT: List[str] = [
     "median_rent",  # Economic baseline
@@ -295,6 +325,66 @@ HEURISTICS_DEFAULT: Dict[int, dict] = {
     },
 }
 
+# Kai-style operational overlays for Clara narrative heuristics.
+HEURISTICS_OPERATIONAL_DEFAULT: Dict[int, List[dict]] = {
+    0: [
+        {"owner": "DBI", "kpi": "+25% habitability complaints from rent-controlled units within 6 months"},
+        {"owner": "Rent Board + MOHCD", "kpi": "90% outreach coverage in top displacement ZIPs"},
+        {"owner": "Controller + DataSF", "kpi": "Income-tier equity benchmark published quarterly"},
+    ],
+    1: [
+        {"owner": "DPW", "kpi": "Median cleaning resolution under 3 days"},
+        {"owner": "DPW Bureau of Urban Forestry", "kpi": "90% tree trims completed within 120 days"},
+        {"owner": "Planning + DBI + MOHCD", "kpi": "+20% ADU permit filings vs prior year"},
+    ],
+    2: [
+        {"owner": "Office of the City Administrator", "kpi": "0 tickets older than 30 days by Day 45"},
+        {"owner": "DBI + DPH", "kpi": "100% parcels audited; unresolved unpermitted units reduced to zero"},
+        {"owner": "RPD + DPW", "kpi": "Positive-service share reaches city median by Day 180"},
+    ],
+    3: [
+        {"owner": "311 Customer Service Center", "kpi": "p90 resolution under 14 days by Day 90"},
+        {"owner": "HSOC + DPW", "kpi": "40% drop in repeat complaints within 6 months"},
+        {"owner": "311 + DataSF", "kpi": "Median inter-agency handoff under 24 hours"},
+    ],
+}
+
+QUEUE_TIMELINES_DEFAULT: Tuple[str, str, str] = ("30d", "60d", "90d")
+
+
+def build_merged_heuristics(
+    narrative: Dict[int, dict],
+    operational_overlay: Dict[int, List[dict]] = HEURISTICS_OPERATIONAL_DEFAULT,
+) -> Dict[int, dict]:
+    """
+    Keep Clara narrative structure but inject Kai-style operational fields.
+    """
+    merged = deepcopy(narrative)
+    for c, block in merged.items():
+        needs = block.get("needs", [])
+        overlays = operational_overlay.get(int(c), [])
+        for i, need in enumerate(needs):
+            ov = overlays[i] if i < len(overlays) else {}
+            if ov.get("owner") and "owner" not in need:
+                need["owner"] = ov["owner"]
+            if ov.get("kpi") and "kpi" not in need:
+                need["kpi"] = ov["kpi"]
+
+        # Preserve original queue labels (01/02/03), add timeline view in parallel.
+        queue = block.get("queue", [])
+        queue_timeline = []
+        for i, step in enumerate(queue):
+            label, action, why = step
+            timeline = QUEUE_TIMELINES_DEFAULT[i] if i < len(QUEUE_TIMELINES_DEFAULT) else str(label)
+            queue_timeline.append((timeline, action, why))
+        block["queue_timeline"] = queue_timeline
+        block["style"] = {
+            "narrative_base": "clara",
+            "operational_overlay": "kai",
+        }
+    return merged
+
+
 # Per-grid (point-level) need/solution templates keyed by pipeline features S* / N*
 POINT_FEATURE_TEMPLATES: Dict[str, Dict[str, object]] = {
     "S1": {
@@ -422,6 +512,13 @@ def _write_json(path: str, payload: dict) -> None:
         json.dump(payload, f, indent=2, ensure_ascii=False, default=_default)
 
 
+def _copy_if_exists(src: str | None, dst: str) -> bool:
+    if not src or not os.path.isfile(src):
+        return False
+    shutil.copy2(src, dst)
+    return True
+
+
 def _require_columns(df: pd.DataFrame, required: List[str], context: str) -> None:
     missing = [c for c in required if c not in df.columns]
     if missing:
@@ -461,7 +558,20 @@ def load_and_aggregate_to_grid(csv_path: str) -> pd.DataFrame:
     for c in pct_cols:
         agg_dict[c] = "mean"
 
+    # Preserve a dominant neighborhood label for each grid (if available).
+    if "analysis_neighborhood" in df.columns:
+        nbhd = (
+            df.dropna(subset=["analysis_neighborhood"])
+            .groupby("grid_id")["analysis_neighborhood"]
+            .agg(lambda s: s.mode().iat[0] if not s.mode().empty else np.nan)
+            .rename("neighborhood")
+        )
+    else:
+        nbhd = None
+
     grid_df = df.groupby("grid_id").agg(agg_dict).reset_index()
+    if nbhd is not None:
+        grid_df = grid_df.merge(nbhd, on="grid_id", how="left")
 
     # Convenience aliases for clustering feature names
     if "monthly_rent_clean" in grid_df.columns:
@@ -511,7 +621,16 @@ def equity_feature_engineering(df_clust: pd.DataFrame, *, cfg: Config) -> pd.Dat
     _require_columns(df_clust, ["grid_id", "cluster", "lat", "lon"], context="equity scoring base")
     _require_columns(df_clust, all_eq_cols, context="equity scoring inputs")
 
-    df_eq = df_clust[["grid_id", "cluster", "lat", "lon"] + all_eq_cols].dropna().copy()
+    # Keep passthrough descriptors (ex: neighborhood) but never drop rows because descriptor is null.
+    passthrough_cols = ["grid_id", "cluster", "lat", "lon"]
+    if "neighborhood" in df_clust.columns:
+        passthrough_cols.append("neighborhood")
+    # Keep useful operational signals from merged input for downstream chat/context use.
+    for c in ("top_service", "total_311_requests", "num_unique_services", "avg_resolution_days", "median_resolution_days"):
+        if c in df_clust.columns and c not in passthrough_cols:
+            passthrough_cols.append(c)
+    selected_cols = list(dict.fromkeys(passthrough_cols + all_eq_cols))
+    df_eq = df_clust[selected_cols].dropna(subset=all_eq_cols).copy()
 
     # Service Performance sub-indicators
     df_eq["S1"] = np.log1p(df_eq["total_311_requests"])
@@ -549,8 +668,10 @@ def equity_feature_engineering(df_clust: pd.DataFrame, *, cfg: Config) -> pd.Dat
     s_cols = ["S1", "S2", "S3", "S4_pos", "S4_neg"]
     n_cols = ["N1", "N2", "N3", "N4", "N5"]
 
-    df_eq = df_eq[["grid_id", "cluster", "lat", "lon"] + s_cols + n_cols]
-    df_eq = df_eq.replace([np.inf, -np.inf], np.nan).dropna()
+    projection = list(dict.fromkeys(passthrough_cols + s_cols + n_cols))
+    df_eq = df_eq[projection]
+    # Only scoring inputs can disqualify rows; passthrough descriptors stay optional.
+    df_eq = df_eq.replace([np.inf, -np.inf], np.nan).dropna(subset=s_cols + n_cols)
     return df_eq
 
 
@@ -589,10 +710,10 @@ def compute_equity_scores(df_eq: pd.DataFrame) -> Tuple[pd.DataFrame, dict]:
         + wn[4] * df_eq["N5"]
     )
 
+    # Kai formula: clip raw equity at p99, then min-max scale to 0..100.
     df_eq["raw_equity"] = df_eq["performance_score"] / (df_eq["need_score"] + 1e-6)
-    log_idx = np.log1p(df_eq["raw_equity"])
-    upper = np.percentile(log_idx, 99)
-    clipped = np.clip(log_idx, log_idx.min(), upper)
+    upper = np.percentile(df_eq["raw_equity"], 99)
+    clipped = np.clip(df_eq["raw_equity"], df_eq["raw_equity"].min(), upper)
     df_eq["equity_score"] = ((clipped - clipped.min()) / (clipped.max() - clipped.min() + 1e-6)) * 100.0
 
     meta = {
@@ -659,6 +780,58 @@ def make_cluster_summary(df_eq: pd.DataFrame, *, cfg: Config) -> pd.DataFrame:
 
     summary["cluster_name"] = summary["cluster"].map(cfg.cluster_names)
     return summary
+
+
+def compute_local_morans_i(
+    df_eq: pd.DataFrame,
+    *,
+    k: int = 8,
+    permutations: int = 999,
+    seed: int = 42,
+    significance: float = 0.05,
+) -> pd.DataFrame:
+    """
+    Compute Local Moran's I (LISA) over equity_score using KNN spatial weights.
+    Adds: lisa_I, lisa_z, lisa_p, lisa_quadrant (HH/LH/LL/HL/NS).
+    """
+    try:
+        from libpysal.weights import KNN
+        from esda.moran import Moran_Local
+    except ImportError as exc:  # pragma: no cover
+        raise RuntimeError(
+            "Local Moran's I requires `libpysal` and `esda`. Install with:\n"
+            "  pip install libpysal esda --break-system-packages"
+        ) from exc
+
+    df = df_eq.copy().reset_index(drop=True)
+    coords = df[["lat", "lon"]].to_numpy()
+    y = df["equity_score"].to_numpy()
+    mask = np.isfinite(coords).all(axis=1) & np.isfinite(y)
+    df_valid = df.loc[mask].reset_index(drop=True)
+    coords_valid = df_valid[["lat", "lon"]].to_numpy()
+    y_valid = df_valid["equity_score"].to_numpy()
+
+    w = KNN.from_array(coords_valid, k=k)
+    w.transform = "r"
+    moran = Moran_Local(y_valid, w, permutations=permutations, seed=seed)
+
+    df_valid["lisa_I"] = moran.Is
+    df_valid["lisa_z"] = moran.z_sim
+    df_valid["lisa_p"] = moran.p_sim
+    # esda q codes: 1=HH, 2=LH, 3=LL, 4=HL
+    quad_map = {1: "HH", 2: "LH", 3: "LL", 4: "HL"}
+    quadrants = np.array([quad_map.get(int(q), "NS") for q in moran.q])
+    quadrants[moran.p_sim > significance] = "NS"
+    df_valid["lisa_quadrant"] = quadrants
+
+    df["lisa_I"] = np.nan
+    df["lisa_z"] = np.nan
+    df["lisa_p"] = np.nan
+    df["lisa_quadrant"] = "NS"
+    df.loc[mask, ["lisa_I", "lisa_z", "lisa_p", "lisa_quadrant"]] = df_valid[
+        ["lisa_I", "lisa_z", "lisa_p", "lisa_quadrant"]
+    ].values
+    return df
 
 
 def points_to_geojson(df: pd.DataFrame, *, id_col: str = "grid_id") -> dict:
@@ -771,6 +944,9 @@ def _enrichment_from_311_cases(path: str | None) -> Dict[str, dict]:
     cat_col = _first_existing_column(
         df,
         [
+            "service_name",
+            "service_subtype",
+            "service_details",
             "case_type_name",
             "Case_Type",
             "Request_Category",
@@ -795,6 +971,48 @@ def _enrichment_from_311_cases(path: str | None) -> Dict[str, dict]:
         if d:
             out[str(gid)] = d
     print(f"[point advice] Enriched {len(out)} grid(s) from 311 case file.")
+    return out
+
+
+def _enrichment_from_merged_311_signals(path: str) -> Dict[str, dict]:
+    """
+    Lightweight 311 context derived from merged_rent_311.csv.
+    Uses pre-aggregated per-grid columns already present in merged input:
+      - total_311_requests
+      - top_service
+    """
+    if not os.path.isfile(path):
+        return {}
+    try:
+        df = pd.read_csv(
+            path,
+            usecols=lambda c: c in {"grid_id", "total_311_requests", "top_service", "analysis_neighborhood"},
+            low_memory=False,
+        )
+    except Exception:
+        return {}
+    if "grid_id" not in df.columns:
+        return {}
+    df = df.copy()
+    df["_gid"] = df["grid_id"].map(_normalize_grid_id)
+    out: Dict[str, dict] = {}
+    for gid, sub in df.groupby("_gid"):
+        d: dict = {}
+        if "total_311_requests" in sub.columns:
+            n = pd.to_numeric(sub["total_311_requests"], errors="coerce").median()
+            if pd.notna(n):
+                d["n_311_cases"] = int(max(0, round(float(n))))
+        if "top_service" in sub.columns:
+            mode = sub["top_service"].dropna().astype(str)
+            if len(mode):
+                d["top_311_type"] = mode.mode().iat[0] if not mode.mode().empty else mode.iloc[0]
+        if "analysis_neighborhood" in sub.columns:
+            mode_n = sub["analysis_neighborhood"].dropna().astype(str)
+            if len(mode_n):
+                d["primary_neighborhood"] = mode_n.mode().iat[0] if not mode_n.mode().empty else mode_n.iloc[0]
+        if d:
+            out[str(gid)] = d
+    print(f"[point advice] Derived {len(out)} grid 311 summaries from merged input.")
     return out
 
 
@@ -944,25 +1162,26 @@ def main() -> None:
             f"Default: Colab Drive path, or set MERGED_RENT_311_CSV. Default value: {DEFAULT_INPUT_CSV!r}"
         ),
     )
-    parser.add_argument("--output-dir", default="outputs", help="Directory to write outputs.")
+    parser.add_argument("--output-dir", default="docs/outputs", help="Directory to write outputs.")
     parser.add_argument("--k", type=int, default=4, help="KMeans clusters (default 4).")
     parser.add_argument("--random-state", type=int, default=42, help="Random seed (default 42).")
     parser.add_argument("--write-geojson", action="store_true", help="Also write GeoJSON point layers.")
     parser.add_argument(
         "--rent-module2",
-        default=os.path.join("data", "rent_dataset_module2.csv"),
+        default="",
         help="Optional housing inventory CSV (with grid_id) to enrich per-grid need/solution text.",
     )
     parser.add_argument(
         "--grid-rent-311",
-        default=os.path.join("data", "grid_level_rent_311.csv"),
-        help="Optional grid-level rent+311 CSV merged on grid_id (extra fields merged into point advice).",
+        default="",
+        help="Optional grid-level rent+311 CSV merged on grid_id (extra fields merged into point advice). "
+        "If omitted, pipeline will try output_dir/grid_level_rent_311.csv.",
     )
     parser.add_argument(
         "--311-data",
-        default=os.path.join("data", "311_data.csv"),
+        default="",
         dest="cases_311",
-        help="Optional 311 case-level CSV (with grid_id) for category + volume enrichment. Default: data/311_data.csv",
+        help="Optional 311 case-level CSV for extra enrichment. If omitted, pipeline will try output_dir/311_data.csv.",
     )
     args = parser.parse_args()
 
@@ -971,12 +1190,18 @@ def main() -> None:
 
     input_path = args.input
     if not os.path.isfile(input_path):
-        raise FileNotFoundError(
-            f"Input CSV not found: {input_path!r}\n"
-            "  • On Colab: mount Drive and ensure the file exists at the default path, or pass --input.\n"
-            "  • Locally: pass your file explicitly, e.g. --input ./merged_rent_311.csv\n"
-            "  • Or set environment variable MERGED_RENT_311_CSV to the full path."
-        )
+        fallback = _first_existing_path([p for p in _INPUT_CANDIDATES if p != input_path])
+        if fallback:
+            print(f"Input path unavailable ({input_path!r}); falling back to {fallback!r}.")
+            input_path = fallback
+        else:
+            raise FileNotFoundError(
+                f"Input CSV not found: {input_path!r}\n"
+                "  • On Colab: mount Drive and ensure the file exists at the default path, or pass --input.\n"
+                "  • Locally: pass your file explicitly, e.g. --input ./merged_rent_311.csv\n"
+                "  • Or set environment variable MERGED_RENT_311_CSV to the full path.\n"
+                f"  • Checked candidates: {', '.join(_INPUT_CANDIDATES)}"
+            )
 
     grid_df = load_and_aggregate_to_grid(input_path)
     df_clust, kmeans, scaler_c = run_kmeans(grid_df, cfg=cfg)
@@ -987,10 +1212,15 @@ def main() -> None:
     z_df, z_meta = zscore_feature_importance(df_eq)
     cluster_summary = make_cluster_summary(df_eq, cfg=cfg)
 
-    e_rent = _enrichment_from_rent_module2(args.rent_module2)
-    e_gr = _enrichment_from_grid_level_rent_311(args.grid_rent_311)
-    e_311 = _enrichment_from_311_cases(args.cases_311)
-    enrichment = _merge_enrichments(e_rent, e_gr, e_311)
+    rent_module2_path = args.rent_module2 or os.path.join(args.output_dir, "rent_dataset_module2.csv")
+    grid_rent_311_path = args.grid_rent_311 or os.path.join(args.output_dir, "grid_level_rent_311.csv")
+    cases_311_path = args.cases_311 or os.path.join(args.output_dir, "311_data.csv")
+
+    e_rent = _enrichment_from_rent_module2(rent_module2_path)
+    e_gr = _enrichment_from_grid_level_rent_311(grid_rent_311_path)
+    e_311_merged = _enrichment_from_merged_311_signals(input_path)
+    e_311_raw = _enrichment_from_311_cases(cases_311_path)
+    enrichment = _merge_enrichments(e_rent, e_gr, e_311_merged, e_311_raw)
     point_by_grid = build_point_level_advice(df_eq, enrichment)
 
     # Join top-3 features onto scored grids (for map tooltips)
@@ -998,6 +1228,16 @@ def main() -> None:
     df_eq["top3_features"] = df_eq["cluster"].astype(int).map(
         lambda c: ", ".join([d["feature"] for d in top_map.get(int(c), [])])
     )
+
+    # Kai LISA pass with safe fallback to NS labels.
+    try:
+        df_eq = compute_local_morans_i(df_eq, k=8, permutations=999, seed=cfg.random_state)
+    except Exception as exc:  # pragma: no cover
+        print(f"[warn] Skipping Local Moran's I: {exc}")
+        df_eq["lisa_quadrant"] = "NS"
+        df_eq["lisa_z"] = np.nan
+        df_eq["lisa_p"] = np.nan
+        df_eq["lisa_I"] = np.nan
 
     # Exports
     grid_results_path = os.path.join(args.output_dir, "grid_results.csv")
@@ -1015,16 +1255,35 @@ def main() -> None:
         {
             "version": 1,
             "ingestion": {
-                "rent_module2_csv": args.rent_module2,
+                "rent_module2_csv": rent_module2_path if os.path.isfile(rent_module2_path) else "",
                 "grids_with_rent_file_enrichment": len(e_rent),
-                "grid_rent_311_csv": args.grid_rent_311,
+                "grid_rent_311_csv": grid_rent_311_path if os.path.isfile(grid_rent_311_path) else "",
                 "grids_with_grid_file_row": len(e_gr),
-                "cases_311_csv": args.cases_311,
-                "grids_with_case_stats": len(e_311),
+                "grids_with_merged_311_summary": len(e_311_merged),
+                "cases_311_csv": cases_311_path if os.path.isfile(cases_311_path) else "",
+                "grids_with_case_stats": len(e_311_raw),
             },
             "by_grid": point_by_grid,
         },
     )
+
+    # Make enrichment CSVs available to browser-side chat (docs/outputs).
+    copied = []
+    merged_out = os.path.join(args.output_dir, "merged_rent_311.csv")
+    if os.path.abspath(input_path) != os.path.abspath(merged_out) and _copy_if_exists(input_path, merged_out):
+        copied.append("merged_rent_311.csv")
+    if os.path.abspath(rent_module2_path) != os.path.abspath(os.path.join(args.output_dir, "rent_dataset_module2.csv")) and _copy_if_exists(
+        rent_module2_path, os.path.join(args.output_dir, "rent_dataset_module2.csv")
+    ):
+        copied.append("rent_dataset_module2.csv")
+    if os.path.abspath(grid_rent_311_path) != os.path.abspath(os.path.join(args.output_dir, "grid_level_rent_311.csv")) and _copy_if_exists(
+        grid_rent_311_path, os.path.join(args.output_dir, "grid_level_rent_311.csv")
+    ):
+        copied.append("grid_level_rent_311.csv")
+    if os.path.abspath(cases_311_path) != os.path.abspath(os.path.join(args.output_dir, "311_data.csv")) and _copy_if_exists(
+        cases_311_path, os.path.join(args.output_dir, "311_data.csv")
+    ):
+        copied.append("311_data.csv")
 
     _write_json(
         metadata_path,
@@ -1039,7 +1298,7 @@ def main() -> None:
             },
             "pca_weights": meta["pca_weights"],
             "top3_features_per_cluster": z_meta["top3_features_per_cluster"],
-            "heuristics": HEURISTICS_DEFAULT,
+            "heuristics": build_merged_heuristics(HEURISTICS_DEFAULT),
             "artifacts": {
                 "grid_results_csv": os.path.basename(grid_results_path),
                 "cluster_summary_csv": os.path.basename(cluster_summary_path),
@@ -1051,6 +1310,14 @@ def main() -> None:
 
     if args.write_geojson:
         geo_cols = ["grid_id", "lat", "lon", "cluster", "equity_score", "performance_score", "need_score", "top3_features"]
+        if "neighborhood" in df_eq.columns:
+            geo_cols.append("neighborhood")
+        for c in ("total_311_requests", "top_service", "num_unique_services", "avg_resolution_days", "median_resolution_days"):
+            if c in df_eq.columns:
+                geo_cols.append(c)
+        for lisa_col in ("lisa_quadrant", "lisa_z", "lisa_p", "lisa_I"):
+            if lisa_col in df_eq.columns:
+                geo_cols.append(lisa_col)
         geo_df = df_eq[geo_cols].copy()
         geojson = points_to_geojson(geo_df)
         _write_json(os.path.join(args.output_dir, "grid_points.geojson"), geojson)
@@ -1065,6 +1332,8 @@ def main() -> None:
     print(f"Wrote: {zscores_path}")
     print(f"Wrote: {metadata_path}")
     print(f"Wrote: {point_advice_path} ({len(point_by_grid):,} grids)")
+    if copied:
+        print(f"Copied enrichment CSVs into output dir: {', '.join(copied)}")
 
 
 if __name__ == "__main__":

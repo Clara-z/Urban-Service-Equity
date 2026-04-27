@@ -143,7 +143,9 @@
             "Conduct proactive inspections in rent-controlled units",
             "Deploy predictive maintenance alerts for aging infrastructure",
             "Create landlord accountability portal for 311 requests"
-          ]
+          ],
+          "owner": "DBI",
+          "kpi": "+25% habitability complaints from rent-controlled units within 6 months"
         },
         {
           "rank": 2,
@@ -154,7 +156,9 @@
             "Expand multilingual tenant rights education and hotline",
             "Partner with community orgs for confidential 311 submission",
             "Track displacement-correlated service gaps longitudinally"
-          ]
+          ],
+          "owner": "Rent Board + MOHCD",
+          "kpi": "90% outreach coverage in top displacement ZIPs"
         },
         {
           "rank": 3,
@@ -165,7 +169,9 @@
             "Compare utilization vs. physical infrastructure condition",
             "Investigate service equity for low-income renters in high-rent zones",
             "Establish per-income-tier equity benchmarks within cluster"
-          ]
+          ],
+          "owner": "Controller + DataSF",
+          "kpi": "Income-tier equity benchmark published quarterly"
         }
       ],
       "queue": [
@@ -184,7 +190,28 @@
           "Cross-reference 311 gaps with housing court filings",
           "Litigation spikes often precede 311 volume — early warning system."
         ]
-      ]
+      ],
+      "queue_timeline": [
+        [
+          "30d",
+          "Audit rent-controlled units for deferred maintenance backlog",
+          "High rent + low volume is a suppression signal, not a success metric."
+        ],
+        [
+          "60d",
+          "Deploy multilingual 311 outreach in high-rent displacement corridors",
+          "Non-English speakers in high-rent zones are least likely to self-report."
+        ],
+        [
+          "90d",
+          "Cross-reference 311 gaps with housing court filings",
+          "Litigation spikes often precede 311 volume — early warning system."
+        ]
+      ],
+      "style": {
+        "narrative_base": "clara",
+        "operational_overlay": "kai"
+      }
     },
     "1": {
       "archetype": "Dominant Residential",
@@ -199,7 +226,9 @@
             "Increase street sweeping frequency in high-density corridors",
             "Install additional litter infrastructure at chokepoints",
             "Pilot automated cleaning notification via 311 app"
-          ]
+          ],
+          "owner": "DPW",
+          "kpi": "Median cleaning resolution under 3 days"
         },
         {
           "rank": 2,
@@ -210,7 +239,9 @@
             "Prioritize tree inventory audit in blocks with highest 311 tree requests",
             "Establish community stewardship programs for green corridors",
             "Accelerate DPW tree trimming cycle from 10yr to 5yr target"
-          ]
+          ],
+          "owner": "DPW Bureau of Urban Forestry",
+          "kpi": "90% tree trims completed within 120 days"
         },
         {
           "rank": 3,
@@ -221,7 +252,9 @@
             "Expand secondary unit permitting in under-utilized parcels",
             "Increase housing inspection capacity for overcrowding reports",
             "Target density relief through inclusionary infill housing pipeline"
-          ]
+          ],
+          "owner": "Planning + DBI + MOHCD",
+          "kpi": "+20% ADU permit filings vs prior year"
         }
       ],
       "queue": [
@@ -240,7 +273,28 @@
           "Conduct housing overcrowding inspection sweep in flagged cells",
           "High density + long occupancy duration = silent overcrowding growth."
         ]
-      ]
+      ],
+      "queue_timeline": [
+        [
+          "30d",
+          "Surge street cleaning crews to top 20% density grid cells",
+          "Cleaning requests are proportional to unmet daily maintenance burden."
+        ],
+        [
+          "60d",
+          "Fast-track tree trimming in corridors with 3+ open requests",
+          "Deferred tree maintenance creates escalating liability and safety risk."
+        ],
+        [
+          "90d",
+          "Conduct housing overcrowding inspection sweep in flagged cells",
+          "High density + long occupancy duration = silent overcrowding growth."
+        ]
+      ],
+      "style": {
+        "narrative_base": "clara",
+        "operational_overlay": "kai"
+      }
     },
     "2": {
       "archetype": "High-Density Outlier",
@@ -255,7 +309,9 @@
             "Deploy dedicated service crew to this cell immediately",
             "Triage 311 backlog by complaint age and recurrence frequency",
             "Assess if this cell is a routing anomaly or genuine hotspot"
-          ]
+          ],
+          "owner": "Office of the City Administrator",
+          "kpi": "0 tickets older than 30 days by Day 45"
         },
         {
           "rank": 2,
@@ -266,7 +322,9 @@
             "Immediate housing inspection referral",
             "Cross-check building permits against occupancy data",
             "Engage community health workers for vulnerable resident outreach"
-          ]
+          ],
+          "owner": "DBI + DPH",
+          "kpi": "100% parcels audited; unresolved unpermitted units reduced to zero"
         },
         {
           "rank": 3,
@@ -277,7 +335,9 @@
             "Prioritize parklet or open space installation in adjacent blocks",
             "Increase sidewalk maintenance inspection frequency",
             "Establish community liaison for recurring public space issues"
-          ]
+          ],
+          "owner": "RPD + DPW",
+          "kpi": "Positive-service share reaches city median by Day 180"
         }
       ],
       "queue": [
@@ -296,7 +356,28 @@
           "Escalate to supervisor district for emergency resource allocation",
           "Single-cell anomaly at this scale warrants political escalation."
         ]
-      ]
+      ],
+      "queue_timeline": [
+        [
+          "30d",
+          "Immediate multi-agency triage — 5sigma statistical outlier",
+          "Volume + crowding + low services = highest composite risk in dataset."
+        ],
+        [
+          "60d",
+          "Deploy housing inspector and community health worker jointly",
+          "Co-deployment reduces duplicate visits and builds resident trust."
+        ],
+        [
+          "90d",
+          "Escalate to supervisor district for emergency resource allocation",
+          "Single-cell anomaly at this scale warrants political escalation."
+        ]
+      ],
+      "style": {
+        "narrative_base": "clara",
+        "operational_overlay": "kai"
+      }
     },
     "3": {
       "archetype": "Slow Resolution Hotspot",
@@ -311,7 +392,9 @@
             "Audit all open 311 tickets in this cluster older than 30 days",
             "Assign dedicated case manager to chronic unresolved complaints",
             "Auto-escalate any ticket open more than 14 days"
-          ]
+          ],
+          "owner": "311 Customer Service Center",
+          "kpi": "p90 resolution under 14 days by Day 90"
         },
         {
           "rank": 2,
@@ -322,7 +405,9 @@
             "Coordinate HSOC and DPW joint sweeps with rehousing referrals",
             "Deploy graffiti abatement within 48h of report",
             "Establish abandoned vehicle fast-track tow program"
-          ]
+          ],
+          "owner": "HSOC + DPW",
+          "kpi": "40% drop in repeat complaints within 6 months"
         },
         {
           "rank": 3,
@@ -333,7 +418,9 @@
             "Audit 311 routing logs for inter-agency handoff failures",
             "Implement case ownership accountability by supervisor district",
             "Create resolution SLA dashboard visible to department heads"
-          ]
+          ],
+          "owner": "311 + DataSF",
+          "kpi": "Median inter-agency handoff under 24 hours"
         }
       ],
       "queue": [
@@ -352,7 +439,28 @@
           "Implement 14-day auto-escalation rule for all Cluster D tickets",
           "Without structural escalation triggers, chronic delays persist indefinitely."
         ]
-      ]
+      ],
+      "queue_timeline": [
+        [
+          "30d",
+          "Audit all 311 tickets older than 30 days in Cluster D",
+          "A 5.5sigma resolution delay is institutional failure, not backlog."
+        ],
+        [
+          "60d",
+          "Joint HSOC + DPW deployment for encampment clearance with rehousing",
+          "Co-deployment with rehousing prevents cycling; clearance alone does not."
+        ],
+        [
+          "90d",
+          "Implement 14-day auto-escalation rule for all Cluster D tickets",
+          "Without structural escalation triggers, chronic delays persist indefinitely."
+        ]
+      ],
+      "style": {
+        "narrative_base": "clara",
+        "operational_overlay": "kai"
+      }
     }
   },
   "artifacts": {
