@@ -83,6 +83,9 @@ const STOPWORDS = new Set([
 ]);
 
 const els = {
+  floatingChatDock: document.getElementById("floatingPublicChat"),
+  floatingChatToggle: document.getElementById("publicChatToggle"),
+  reportClusterExternal: document.getElementById("reportCluster"),
   modelSelect: document.getElementById("modelSelect"),
   customModel: document.getElementById("customModel"),
   apiKey: document.getElementById("apiKey"),
@@ -761,6 +764,14 @@ async function send() {
 }
 
 function bindEvents() {
+  els.floatingChatToggle?.addEventListener("click", () => {
+    const dock = els.floatingChatDock;
+    if (!dock) return;
+    const collapsed = dock.classList.toggle("isCollapsed");
+    els.floatingChatToggle.textContent = collapsed ? "+" : "−";
+    els.floatingChatToggle.setAttribute("aria-expanded", String(!collapsed));
+  });
+
   els.sendBtn.addEventListener("click", () => send());
   els.userInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send();
@@ -787,6 +798,13 @@ function bindEvents() {
   }
   els.gridContext.addEventListener("input", () => renderContextPreview());
   els.refreshContext.addEventListener("click", () => renderContextPreview());
+  els.reportClusterExternal?.addEventListener("change", () => {
+    if (els.clusterContext) {
+      els.clusterContext.value = String(els.reportClusterExternal.value || "0");
+      renderContextPreview();
+      saveState();
+    }
+  });
   els.clearChat.addEventListener("click", () => {
     state.chat = [];
     renderChat();

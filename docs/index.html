@@ -254,32 +254,6 @@
         </div>
       </section>
 
-      <section class="panel chatPanel reportChatPanel" aria-label="Ask a question about this cluster">
-        <div class="panelHeader">
-          <div class="panelTitle">Ask a question</div>
-          <div class="panelMeta" id="publicChatContextHint">Loading data…</div>
-        </div>
-
-        <p class="publicChatBlurb">Plain-language questions about what you see above. Answers use the numbers on this page and short excerpts from indexed research papers.</p>
-
-        <div id="publicChatStatus" class="chatHint">Loading…</div>
-
-        <div id="publicChatMessages" class="chatMessages"></div>
-
-        <div class="chatComposer">
-          <label class="visuallyHidden" for="publicChatInput">Your question</label>
-          <textarea
-            id="publicChatInput"
-            rows="3"
-            placeholder="For example: What should we do first here, and what would help most?"
-          ></textarea>
-          <div class="chatActions">
-            <button id="publicChatClear" type="button" class="btn secondary">Clear</button>
-            <button id="publicChatSend" type="button" class="btn">Send</button>
-          </div>
-        </div>
-      </section>
-
       <section class="panel">
         <div class="panelHeader">
           <div class="panelTitle">Root causes (z-score vs city avg)</div>
@@ -351,13 +325,64 @@
       </section>
     </main>
 
+    <section id="floatingPublicChat" class="panel chatPanel floatingChatDock" aria-label="Ask a question about this dashboard">
+      <div class="panelHeader">
+        <div class="panelTitle">Ask</div>
+        <div class="floatingChatHeaderActions">
+          <button id="publicChatToggle" type="button" class="btn secondary floatingChatToggle" aria-expanded="true">−</button>
+        </div>
+      </div>
+
+      <div id="floatingPublicChatBody" class="floatingChatBody">
+        <div id="chatStatus" class="chatHint">Loading…</div>
+        <div id="chatMessages" class="chatMessages"></div>
+        <div class="chatComposer">
+          <label class="visuallyHidden" for="userInput">Your question</label>
+          <textarea
+            id="userInput"
+            rows="2"
+            placeholder="Ask while viewing the map..."
+          ></textarea>
+          <div class="chatActions">
+            <button id="clearChat" type="button" class="btn secondary">Clear</button>
+            <button id="sendBtn" type="button" class="btn">Send</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="chatConfigCompat" aria-hidden="true">
+      <select id="modelSelect">
+        <option value="gpt-4o" selected>gpt-4o</option>
+      </select>
+      <input id="customModel" type="text" value="" />
+      <input id="apiKey" type="password" value="" />
+      <input id="ragApiBase" type="text" value="https://urban-service-equity.vercel.app" />
+      <input id="temperature" type="number" value="0.5" />
+      <input id="maxTokens" type="number" value="900" />
+      <input id="topK" type="number" value="8" />
+      <select id="contextMode">
+        <option value="cluster" selected>cluster</option>
+      </select>
+      <select id="clusterContext">
+        <option value="0" selected>0</option>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+      </select>
+      <input id="gridContext" type="text" value="" />
+      <textarea id="systemPrompt"></textarea>
+      <textarea id="contextPreview"></textarea>
+      <button id="refreshContext" type="button">Refresh context</button>
+    </section>
+
     <script
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
     <script type="module" src="assets/app.js"></script>
-    <script type="module" src="assets/public_chat.js"></script>
+    <script type="module" src="assets/chat.js"></script>
   </body>
 </html>
 
