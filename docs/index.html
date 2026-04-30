@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Equity Dashboard — Map</title>
-    <link rel="stylesheet" href="assets/styles.css?v=29" />
+    <title>Urban Service Equity Dashboard</title>
+    <link rel="stylesheet" href="assets/styles.css?v=30" />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -17,8 +17,8 @@
   <body>
     <header class="topbar">
       <div class="brand">
-        <div class="title">Equity Dashboard</div>
-        <div class="subtitle">Map (Equity-first) → Cluster report (ask a question below)</div>
+        <div class="title">Urban Service Equity Dashboard</div>
+        <div class="subtitle">A Block-Level Equity Diagnostic for Resource Allocation in the City of San Francisco</div>
       </div>
     </header>
 
@@ -31,53 +31,63 @@
       </div>
 
       <div class="heroInner">
-        <div class="heroEyebrow">Urban Service Equity</div>
-        <h1 class="heroTitle">See where housing stress meets service performance.</h1>
+        <div class="heroEyebrow">City &amp; County of San Francisco</div>
+        <h1 class="heroTitle">Where are 311 services falling short — and why?</h1>
         <p class="heroLead">
-          A grid-level map of equity scores and cluster archetypes—so you can spot hotspots, understand root causes, and
-          compare patterns across the city.
+          This dashboard maps every city block against an equity score that balances
+          <em>service performance</em> (311 volume, resolution speed, service mix) with
+          <em>housing need</em> (density, crowding, affordability, building age). Use it to
+          identify underserved areas, understand structural root causes, and prioritize
+          resource allocation across San Francisco's 41 neighborhoods.
         </p>
 
-        <div class="bento" aria-label="What you can do">
+        <div class="bento" aria-label="Three analytical layers">
           <div class="bentoCard">
-            <h2 class="bentoTitle">Explore equity hotspots</h2>
-            <p class="bentoText">Filter by equity range, click a grid cell, and see what makes it different—fast.</p>
+            <h2 class="bentoTitle">How to use this tool</h2>
+            <p class="bentoText">
+              The map supports three analytical views. Start with <b>Equity Score</b> to locate
+              underserved blocks, switch to <b>LISA Quadrant</b> to see spatial clustering patterns,
+              then drill into <b>Cluster</b> to compare neighborhood archetypes and root causes.
+            </p>
             <div class="bentoKpis">
               <div class="kpi">
-                <div class="kpiVal">Equity</div>
-                <div class="kpiLab">0–100 score per grid</div>
+                <div class="kpiVal">Equity Score</div>
+                <div class="kpiLab">0–100 per block, combining service &amp; need</div>
               </div>
               <div class="kpi">
-                <div class="kpiVal">Clusters</div>
-                <div class="kpiLab">Archetypes that repeat</div>
+                <div class="kpiVal">LISA Quadrant</div>
+                <div class="kpiLab">Spatial autocorrelation (hot/cold spots)</div>
               </div>
               <div class="kpi">
-                <div class="kpiVal">Root causes</div>
-                <div class="kpiLab">Z-scores vs city avg</div>
+                <div class="kpiVal">Cluster</div>
+                <div class="kpiLab">Neighborhood archetypes by feature profile</div>
               </div>
             </div>
           </div>
           <div class="bentoSide">
             <div class="bentoMini">
-              <span class="bentoTag">Triage</span>
-              <h3>From point → cluster report</h3>
-              <p>Click a point, jump to the explanation, and compare against its cluster baseline.</p>
+              <span class="bentoTag">Diagnose</span>
+              <h3>Block → Report → Intervention</h3>
+              <p>Click any block on the map. The side panel shows its score, neighborhood, and
+                top distinguishing features. Hit the report button to see contextualized
+                needs and recommended actions.</p>
             </div>
             <div class="bentoMini">
               <span class="bentoTag">Ask</span>
-              <h3>Plain-language Q&amp;A</h3>
-              <p>Scroll to the report section to ask questions grounded in this page and indexed papers.</p>
+              <h3>AI-Assisted Q&amp;A</h3>
+              <p>Use the chat panel to ask questions grounded in this dashboard's data and
+                indexed planning literature — no query language required.</p>
             </div>
           </div>
         </div>
 
         <div class="heroActions">
-          <a class="btn" href="#mapPanel">Explore the map</a>
-          <a class="btn secondary" href="#report">How it works</a>
+          <a class="btn" href="#mapPanel">Go to Map</a>
+          <a class="btn secondary" href="#report">Jump to Reports</a>
         </div>
 
         <div class="heroMeta">
-          Scroll to explore. Tip: use <b>Equity</b> to find hotspots, then <b>Cluster</b> to explain why.
+          Data: SF 311 service requests × housing inventory (2024–2025) · 367k cases · 254k units · 41 neighborhoods
         </div>
       </div>
 
@@ -154,8 +164,8 @@
           <label for="colorMode">Color</label>
           <select id="colorMode">
             <option value="equity" selected>Equity Score (0–100)</option>
-            <option value="cluster">Cluster</option>
             <option value="lisa">LISA Quadrant (spatial autocorrelation)</option>
+            <option value="cluster">Cluster</option>
           </select>
         </div>
 
@@ -422,7 +432,7 @@
 
       <section class="panel debugVersionPanel" id="debugVersionPanel" aria-label="Build info">
         <div style="font-size:11px;color:#f90;text-align:center;padding:6px 0;">
-          DEBUG: deployed 2026-04-30 v29
+          DEBUG: deployed 2026-04-30 v30
         </div>
       </section>
 
@@ -497,8 +507,8 @@
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
-    <script type="module" src="assets/app.js?v=29"></script>
-    <script type="module" src="assets/chat.js?v=29"></script>
+    <script type="module" src="assets/app.js?v=30"></script>
+    <script type="module" src="assets/chat.js?v=30"></script>
   </body>
 </html>
 

@@ -240,28 +240,7 @@ function renderEquityHistogram() {
   }
   const [emin, emax] = selectedEquityRange();
 
-  // Collect ALL raw scores to determine the full data range.
-  const allScores = [];
-  for (const f of geo.features) {
-    const v = Number(f?.properties?.equity_score);
-    if (Number.isFinite(v)) allScores.push(v);
-  }
-  if (!allScores.length) {
-    return `<div class="legendHint">No equity scores available.</div>`;
-  }
-
-  const globalMin = Math.min(...allScores);
-  const globalMax = Math.max(...allScores);
-
-  // Map percentile filter limits back to raw score boundaries.
-  allScores.sort((a, b) => a - b);
-  const n = allScores.length;
-  const loIdx = Math.min(n - 1, Math.max(0, Math.floor((emin / 100) * n)));
-  const hiIdx = Math.min(n - 1, Math.max(0, Math.ceil((emax / 100) * n) - 1));
-  const rawLo = allScores[loIdx];
-  const rawHi = allScores[hiIdx];
-
-  // Collect visible values within the percentile filter.
+  // Collect visible raw scores that pass the current percentile filter.
   const values = [];
   for (const f of geo.features) {
     const v = Number(f?.properties?.equity_score);
@@ -274,46 +253,39 @@ function renderEquityHistogram() {
     return `<div class="legendHint">No equity scores in percentile ${emin.toFixed(0)}–${emax.toFixed(0)}.</div>`;
   }
 
-  // Build bins spanning rawLo → rawHi (the filtered raw range).
-  const span = Math.max(1e-9, rawHi - rawLo);
+  // Use actual min/max of the visible raw scores as bin boundaries.
+  const rawMin = Math.min(...values);
+  const rawMax = Math.max(...values);
+  const span = Math.max(1e-9, rawMax - rawMin);
   const bins = EQUITY_HIST_BINS_MAX;
   const counts = Array.from({ length: bins }, () => 0);
   for (const v of values) {
-    const idx = Math.min(bins - 1, Math.floor(((v - rawLo) / span) * bins));
+    const idx = Math.min(bins - 1, Math.floor(((v - rawMin) / span) * bins));
     counts[idx] += 1;
   }
 
   const maxCount = Math.max(...counts, 1);
   const bars = counts
     .map((count, i) => {
-      const lo = rawLo + i * (span / bins);
-      const hi = rawLo + (i + 1) * (span / bins);
+      const lo = rawMin + i * (span / bins);
+      const hi = rawMin + (i + 1) * (span / bins);
       const h = Math.max(4, Math.round((count / maxCount) * 36));
-      return `<div class="histBar" style="height:${h}px" title="${fmtRawEdge(lo, span)}–${fmtRawEdge(hi, span)}: ${count}"></div>`;
-    })
-    .join("");
-
-  const catRows = counts
-    .map((count, i) => {
-      const lo = rawLo + i * (span / bins);
-      const hi = rawLo + (i + 1) * (span / bins);
-      return `<div class="histCat"><span>${fmtRawEdge(lo, span)}–${fmtRawEdge(hi, span)}</span><b>${count.toLocaleString()}</b></div>`;
+      return `<div class="histBar" style="height:${h}px" title="${lo.toFixed(1)}–${hi.toFixed(1)}: ${count}"></div>`;
     })
     .join("");
 
   return `
     <div class="histWrap">
       <div class="histHeader">
-        <span>Distribution (raw equity score)</span>
+        <span>Distribution (raw score)</span>
         <span>n = ${values.length.toLocaleString()}</span>
       </div>
       <div class="histBars">${bars}</div>
       <div class="histLabels">
-        <span>${fmtRawEdge(rawLo, span)}</span>
-        <span>${fmtRawEdge((rawLo + rawHi) / 2, span)}</span>
-        <span>${fmtRawEdge(rawHi, span)}</span>
+        <span>${rawMin.toFixed(1)}</span>
+        <span>${((rawMin + rawMax) / 2).toFixed(1)}</span>
+        <span>${rawMax.toFixed(1)}</span>
       </div>
-      <div class="histCats">${catRows}</div>
     </div>
   `;
 }
