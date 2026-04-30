@@ -226,32 +226,12 @@ function markerStyle(props) {
   return { color: c, fillColor: c };
 }
 
-function histogramBinsForSpan(span) {
-  // Clara-style dynamic bins for narrow ranges.
-  const bySpan = Math.round(span * 2);
-  return Math.max(4, Math.min(EQUITY_HIST_BINS_MAX, bySpan));
-}
-
-function fmtBinEdge(v, span) {
-  if (span <= 2) return v.toFixed(2);
-  if (span <= 10) return v.toFixed(1);
+function fmtRawEdge(v, span) {
+  if (span <= 0.1) return v.toFixed(4);
+  if (span <= 1) return v.toFixed(3);
+  if (span <= 10) return v.toFixed(2);
+  if (span <= 100) return v.toFixed(1);
   return v.toFixed(0);
-}
-
-function getEquityHistogram(features, rangeMin, rangeMax, bins = EQUITY_HIST_BINS_MAX) {
-  const counts = Array.from({ length: bins }, () => 0);
-  let total = 0;
-  const span = Math.max(1e-9, rangeMax - rangeMin);
-  for (const feature of features ?? []) {
-    const score = Number(feature?.properties?.equity_score);
-    const pct = rawToPercent(score);
-    if (!Number.isFinite(pct)) continue;
-    if (pct < rangeMin || pct > rangeMax) continue;
-    const idx = Math.min(bins - 1, Math.floor(((pct - rangeMin) / span) * bins));
-    counts[idx] += 1;
-    total += 1;
-  }
-  return { counts, total };
 }
 
 function renderEquityHistogram() {
@@ -259,42 +239,60 @@ function renderEquityHistogram() {
     return `<div class="legendHint">Distribution loading...</div>`;
   }
   const [emin, emax] = selectedEquityRange();
-  const span = Math.max(1e-9, emax - emin);
-  const bins = histogramBinsForSpan(span);
-  const { counts, total } = getEquityHistogram(geo.features, emin, emax, bins);
-  if (!total) {
+  // Use RAW equity_score values directly (no percentile conversion).
+  // Respect the current min/max filter (still expressed in percentile space)
+  // so the histogram matches what's visible on the map.
+  const values = [];
+  for (const f of geo.features) {
+    const v = Number(f?.properties?.equity_score);
+    if (!Number.isFinite(v)) continue;
+    const pct = rawToPercent(v);
+    if (!Number.isFinite(pct) || pct < emin || pct > emax) continue;
+    values.push(v);
+  }
+  if (!values.length) {
     return `<div class="legendHint">No equity scores in ${emin.toFixed(0)}-${emax.toFixed(0)}.</div>`;
+  }
+
+  const rawMin = Math.min(...values);
+  const rawMax = Math.max(...values);
+  const span = Math.max(1e-9, rawMax - rawMin);
+  const bins = EQUITY_HIST_BINS_MAX;
+  const counts = Array.from({ length: bins }, () => 0);
+  for (const v of values) {
+    const idx = Math.min(bins - 1, Math.floor(((v - rawMin) / span) * bins));
+    counts[idx] += 1;
   }
 
   const maxCount = Math.max(...counts, 1);
   const bars = counts
     .map((count, i) => {
-      const lo = emin + i * (span / bins);
-      const hi = emin + (i + 1) * (span / bins);
+      const lo = rawMin + i * (span / bins);
+      const hi = rawMin + (i + 1) * (span / bins);
       const h = Math.max(4, Math.round((count / maxCount) * 36));
-      return `<div class="histBar" style="height:${h}px" title="${fmtBinEdge(lo, span)}-${fmtBinEdge(hi, span)}: ${count}"></div>`;
+      return `<div class="histBar" style="height:${h}px" title="${fmtRawEdge(lo, span)}-${fmtRawEdge(hi, span)}: ${count}"></div>`;
     })
     .join("");
 
   const catRows = counts
     .map((count, i) => {
-      const lo = emin + i * (span / bins);
-      const hi = emin + (i + 1) * (span / bins);
-      return `<div class="histCat"><span>${fmtBinEdge(lo, span)}-${fmtBinEdge(hi, span)}</span><b>${count.toLocaleString()}</b></div>`;
+      const lo = rawMin + i * (span / bins);
+      const hi = rawMin + (i + 1) * (span / bins);
+      return `<div class="histCat"><span>${fmtRawEdge(lo, span)}-${fmtRawEdge(hi, span)}</span><b>${count.toLocaleString()}</b></div>`;
     })
     .join("");
 
   return `
     <div class="histWrap">
       <div class="histHeader">
-        <span>Distribution ${emin.toFixed(0)}-${emax.toFixed(0)}</span>
-        <span>n=${total.toLocaleString()}</span>
+        <span>Distribution (raw equity_score)</span>
+        <span>n=${values.length.toLocaleString()}</span>
       </div>
       <div class="histBars">${bars}</div>
       <div class="histLabels">
-        <span>${fmtBinEdge(emin, span)}</span>
-        <span>${fmtBinEdge((emin + emax) / 2, span)}</span>
-        <span>${fmtBinEdge(emax, span)}</span>
+        <span>${fmtRawEdge(rawMin, span)}</span>
+        <span>${fmtRawEdge((rawMin + rawMax) / 2, span)}</span>
+        <span>${fmtRawEdge(rawMax, span)}</span>
       </div>
       <div class="histCats">${catRows}</div>
     </div>
