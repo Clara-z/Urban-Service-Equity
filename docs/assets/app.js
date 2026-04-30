@@ -253,24 +253,36 @@ function renderEquityHistogram() {
     return `<div class="legendHint">No equity scores in percentile ${emin.toFixed(0)}–${emax.toFixed(0)}.</div>`;
   }
 
-  // Use actual min/max of the visible raw scores as bin boundaries.
-  const rawMin = Math.min(...values);
-  const rawMax = Math.max(...values);
-  const span = Math.max(1e-9, rawMax - rawMin);
+  values.sort((a, b) => a - b);
+  const n = values.length;
+
+  // Use p1–p99 of visible data as the histogram window so the distribution
+  // shape is visible even when data is tightly concentrated.
+  // Outliers below/above are folded into the first/last bins.
+  const binLo = values[Math.floor(n * 0.01)];
+  const binHi = values[Math.min(n - 1, Math.ceil(n * 0.99))];
+  const span = Math.max(1e-12, binHi - binLo);
+
+  // Choose decimal precision based on data spread.
+  const decimals = span < 0.1 ? 4 : span < 1 ? 3 : span < 10 ? 2 : span < 100 ? 1 : 0;
+  const label = (v) => v.toFixed(decimals);
+
   const bins = EQUITY_HIST_BINS_MAX;
   const counts = Array.from({ length: bins }, () => 0);
   for (const v of values) {
-    const idx = Math.min(bins - 1, Math.floor(((v - rawMin) / span) * bins));
+    // Clamp outliers into first/last bin.
+    const clamped = Math.max(binLo, Math.min(binHi, v));
+    const idx = Math.min(bins - 1, Math.floor(((clamped - binLo) / span) * bins));
     counts[idx] += 1;
   }
 
   const maxCount = Math.max(...counts, 1);
   const bars = counts
     .map((count, i) => {
-      const lo = rawMin + i * (span / bins);
-      const hi = rawMin + (i + 1) * (span / bins);
+      const lo = binLo + i * (span / bins);
+      const hi = binLo + (i + 1) * (span / bins);
       const h = Math.max(4, Math.round((count / maxCount) * 36));
-      return `<div class="histBar" style="height:${h}px" title="${lo.toFixed(1)}–${hi.toFixed(1)}: ${count}"></div>`;
+      return `<div class="histBar" style="height:${h}px" title="${label(lo)}–${label(hi)}: ${count}"></div>`;
     })
     .join("");
 
@@ -282,9 +294,9 @@ function renderEquityHistogram() {
       </div>
       <div class="histBars">${bars}</div>
       <div class="histLabels">
-        <span>${rawMin.toFixed(1)}</span>
-        <span>${((rawMin + rawMax) / 2).toFixed(1)}</span>
-        <span>${rawMax.toFixed(1)}</span>
+        <span>${label(binLo)}</span>
+        <span>${label((binLo + binHi) / 2)}</span>
+        <span>${label(binHi)}</span>
       </div>
     </div>
   `;
