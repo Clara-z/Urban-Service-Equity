@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Equity Dashboard — Map</title>
-    <link rel="stylesheet" href="assets/styles.css?v=27" />
+    <link rel="stylesheet" href="assets/styles.css?v=28" />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -19,7 +19,7 @@
       <div class="brand">
         <div class="title">Equity Dashboard</div>
         <div class="subtitle">Map (Equity-first) → Cluster report (ask a question below)</div>
-        <div style="font-size:11px;color:#f90;margin-top:4px;">DEBUG: deployed 2026-04-29 v27</div>
+        <div style="font-size:11px;color:#f90;margin-top:4px;">DEBUG: deployed 2026-04-29 v28</div>
       </div>
     </header>
 
@@ -256,6 +256,66 @@
     </main>
 
     <main id="report" class="main reportMain">
+      <section class="panel" id="lowEquityPanel">
+        <div class="panelHeader">
+          <div class="panelTitle">Equaty Score Report - Low Equity Neighborhoods</div>
+          <div class="panelMeta">Neighborhoods ranked by statistically significant low-equity cells (LL + LH)</div>
+        </div>
+        <div id="lowEquityCongregations" class="congTable">—</div>
+        <p class="smallNote" id="lowEquityHint">Click a neighborhood row to see a concise sample of underserved cells with street context.</p>
+        <div id="lowEquityCells" class="lowEqCells"></div>
+      </section>
+
+      <section class="panel" id="equityCellPanel">
+        <div class="panelHeader">
+          <div class="panelTitle">Needs and Intervention — by Equity Score</div>
+          <div class="panelMeta">Choose a neighborhood, then an LL grid cell for focused intervention context</div>
+        </div>
+        <div class="reportControls">
+          <div class="control">
+            <label for="equityCellNbhd">Neighborhood</label>
+            <select id="equityCellNbhd"></select>
+          </div>
+          <div class="control">
+            <label for="equityCellId">Grid cell</label>
+            <select id="equityCellId"></select>
+          </div>
+        </div>
+        <div id="equityCellContext" class="equityCellContext emptyResult">
+          Select a neighborhood and LL grid cell to see contextualized needs and actions.
+        </div>
+        <div class="niStack">
+          <div id="equityCellNeeds" class="niStackInner"></div>
+        </div>
+      </section>
+
+      <section class="panel" id="lisaGroupsPanel">
+        <div class="panelHeader">
+          <div class="panelTitle">LISA Quadrant Report — Underserved Groups</div>
+          <div class="panelMeta">Pick a neighborhood, then a low-equity significant cell (LL or LH)</div>
+        </div>
+        <p class="smallNote">
+          <b>LL</b> = low-equity cell surrounded by low-equity neighbors (underserved cluster).
+          <b>LH</b> = low-equity cell inside a higher-equity area (struggling pocket).
+        </p>
+        <div class="reportControls">
+          <div class="control">
+            <label for="lisaNbhdSel">Neighborhood</label>
+            <select id="lisaNbhdSel"></select>
+          </div>
+          <div class="control">
+            <label for="lisaCellSel">Grid cell</label>
+            <select id="lisaCellSel"></select>
+          </div>
+        </div>
+        <div id="lisaCellContext" class="equityCellContext emptyResult">
+          Select a neighborhood and an underserved cell to view context and interventions.
+        </div>
+        <div class="niStack">
+          <div id="lisaCellNeeds" class="niStackInner"></div>
+        </div>
+      </section>
+
       <section class="panel">
         <div class="panelHeader">
           <div class="panelTitle">Cluster report</div>
@@ -338,68 +398,6 @@
         </p>
         <div class="chartWrap">
           <canvas id="zChart" height="260"></canvas>
-        </div>
-      </section>
-
-
-
-      <section class="panel" id="lowEquityPanel">
-        <div class="panelHeader">
-          <div class="panelTitle">Equaty Score Report - Low Equity Neighborhoods</div>
-          <div class="panelMeta">Neighborhoods ranked by statistically significant low-equity cells (LL + LH)</div>
-        </div>
-        <div id="lowEquityCongregations" class="congTable">—</div>
-        <p class="smallNote" id="lowEquityHint">Click a neighborhood row to see a concise sample of underserved cells with street context.</p>
-        <div id="lowEquityCells" class="lowEqCells"></div>
-      </section>
-
-      <section class="panel" id="lisaGroupsPanel">
-        <div class="panelHeader">
-          <div class="panelTitle">LISA Quadrant Report — Underserved Groups</div>
-          <div class="panelMeta">Pick a neighborhood, then a low-equity significant cell (LL or LH)</div>
-        </div>
-        <p class="smallNote">
-          <b>LL</b> = low-equity cell surrounded by low-equity neighbors (underserved cluster).
-          <b>LH</b> = low-equity cell inside a higher-equity area (struggling pocket).
-        </p>
-        <div class="reportControls">
-          <div class="control">
-            <label for="lisaNbhdSel">Neighborhood</label>
-            <select id="lisaNbhdSel"></select>
-          </div>
-          <div class="control">
-            <label for="lisaCellSel">Grid cell</label>
-            <select id="lisaCellSel"></select>
-          </div>
-        </div>
-        <div id="lisaCellContext" class="equityCellContext emptyResult">
-          Select a neighborhood and an underserved cell to view context and interventions.
-        </div>
-        <div class="niStack">
-          <div id="lisaCellNeeds" class="niStackInner"></div>
-        </div>
-      </section>
-
-      <section class="panel" id="equityCellPanel">
-        <div class="panelHeader">
-          <div class="panelTitle">Needs and Intervention — by Equity Score</div>
-          <div class="panelMeta">Choose a neighborhood, then an LL grid cell for focused intervention context</div>
-        </div>
-        <div class="reportControls">
-          <div class="control">
-            <label for="equityCellNbhd">Neighborhood</label>
-            <select id="equityCellNbhd"></select>
-          </div>
-          <div class="control">
-            <label for="equityCellId">Grid cell</label>
-            <select id="equityCellId"></select>
-          </div>
-        </div>
-        <div id="equityCellContext" class="equityCellContext emptyResult">
-          Select a neighborhood and LL grid cell to see contextualized needs and actions.
-        </div>
-        <div class="niStack">
-          <div id="equityCellNeeds" class="niStackInner"></div>
         </div>
       </section>
 
@@ -494,8 +492,8 @@
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
-    <script type="module" src="assets/app.js?v=27"></script>
-    <script type="module" src="assets/chat.js?v=27"></script>
+    <script type="module" src="assets/app.js?v=28"></script>
+    <script type="module" src="assets/chat.js?v=28"></script>
   </body>
 </html>
 
