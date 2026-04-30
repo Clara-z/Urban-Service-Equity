@@ -87,44 +87,9 @@
       </a>
     </section>
 
-    <section class="mapControlsRow" aria-label="Map filters">
-      <div class="controls">
-        <div class="control">
-          <label for="colorMode">Color</label>
-          <select id="colorMode">
-            <option value="equity" selected>Equity score (0–100)</option>
-            <option value="cluster">Cluster</option>
-            <option value="lisa">LISA cluster (spatial autocorrelation)</option>
-          </select>
-        </div>
-
-        <div class="control">
-          <label for="clusterFilter">Cluster filter</label>
-          <select id="clusterFilter">
-            <option value="all" selected>All</option>
-            <option value="0">Cluster A</option>
-            <option value="1">Cluster B</option>
-            <option value="2">Cluster C</option>
-            <option value="3">Cluster D</option>
-          </select>
-        </div>
-
-        <div class="control">
-          <label for="equityMin">Equity min</label>
-          <input id="equityMin" type="number" min="0" max="100" step="1" value="0" />
-        </div>
-        <div class="control">
-          <label for="equityMax">Equity max</label>
-          <input id="equityMax" type="number" min="0" max="100" step="1" value="100" />
-        </div>
-
-        <button id="applyFilters" class="btn">Apply</button>
-      </div>
-    </section>
-
     <section class="panel metricsPanel">
       <div class="panelHeader">
-        <div class="panelTitle">Key performance metrics</div>
+        <div class="panelTitle">Key Performance Metrics</div>
         <div class="panelMeta">311 service requests × SF housing inventory (combined dataset)</div>
       </div>
       <div class="metricsGrid">
@@ -183,10 +148,45 @@
       </div>
     </section>
 
+    <section class="mapControlsRow" aria-label="Map filters">
+      <div class="controls">
+        <div class="control">
+          <label for="colorMode">Color</label>
+          <select id="colorMode">
+            <option value="equity" selected>Equity Score (0–100)</option>
+            <option value="cluster">Cluster</option>
+            <option value="lisa">LISA Quadrant (spatial autocorrelation)</option>
+          </select>
+        </div>
+
+        <div class="control">
+          <label for="clusterFilter">Cluster filter</label>
+          <select id="clusterFilter">
+            <option value="all" selected>All</option>
+            <option value="0">Cluster A</option>
+            <option value="1">Cluster B</option>
+            <option value="2">Cluster C</option>
+            <option value="3">Cluster D</option>
+          </select>
+        </div>
+
+        <div class="control">
+          <label for="equityMin">Equity min</label>
+          <input id="equityMin" type="number" min="0" max="100" step="1" value="0" />
+        </div>
+        <div class="control">
+          <label for="equityMax">Equity max</label>
+          <input id="equityMax" type="number" min="0" max="100" step="1" value="100" />
+        </div>
+
+        <button id="applyFilters" class="btn">Apply</button>
+      </div>
+    </section>
+
     <main class="main">
       <section id="mapPanel" class="panel mapPanel">
         <div class="panelHeader">
-          <div class="panelTitle">Interactive map</div>
+          <div class="panelTitle">Interactive Map</div>
           <div class="panelMeta">
             Data: <code id="dataPath">outputs/grid_points.geojson</code>
           </div>
@@ -242,7 +242,7 @@
           </div>
 
           <div class="actions">
-            <a id="clusterLink" class="btn" href="#report">View cluster report</a>
+            <a id="clusterLink" class="btn" href="#lowEquityPanel">View Equity Score Report</a>
             <button id="clearSelection" class="btn secondary">Clear</button>
           </div>
 
@@ -257,7 +257,7 @@
     <main id="report" class="main reportMain">
       <section class="panel" id="lowEquityPanel">
         <div class="panelHeader">
-          <div class="panelTitle">Equaty Score Report - Low Equity Neighborhoods</div>
+          <div class="panelTitle">Equity Score Report — Low Equity Neighborhoods</div>
           <div class="panelMeta">Neighborhoods ranked by statistically significant low-equity cells (LL + LH)</div>
         </div>
         <div id="lowEquityCongregations" class="congTable">—</div>
@@ -267,7 +267,7 @@
 
       <section class="panel" id="equityCellPanel">
         <div class="panelHeader">
-          <div class="panelTitle">Needs and Intervention — by Equity Score</div>
+          <div class="panelTitle">Needs and Intervention — By Equity Score</div>
           <div class="panelMeta">Choose a neighborhood, then an LL grid cell for focused intervention context</div>
         </div>
         <div class="reportControls">
@@ -315,9 +315,9 @@
         </div>
       </section>
 
-      <section class="panel">
+      <section class="panel" id="clusterReportPanel">
         <div class="panelHeader">
-          <div class="panelTitle">Cluster report</div>
+          <div class="panelTitle">Cluster Report</div>
           <div class="panelMeta">Auto-updates when you click the map</div>
         </div>
 
@@ -389,7 +389,7 @@
 
       <section class="panel">
         <div class="panelHeader">
-          <div class="panelTitle">Root causes (z-score vs city avg)</div>
+          <div class="panelTitle">Root Causes (Z-Score vs City Avg)</div>
           <div class="panelMeta">Full feature profile vs city average</div>
         </div>
         <p class="smallNote">

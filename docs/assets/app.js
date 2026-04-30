@@ -239,9 +239,29 @@ function renderEquityHistogram() {
     return `<div class="legendHint">Distribution loading...</div>`;
   }
   const [emin, emax] = selectedEquityRange();
-  // Use RAW equity_score values directly (no percentile conversion).
-  // Respect the current min/max filter (still expressed in percentile space)
-  // so the histogram matches what's visible on the map.
+
+  // Collect ALL raw scores to determine the full data range.
+  const allScores = [];
+  for (const f of geo.features) {
+    const v = Number(f?.properties?.equity_score);
+    if (Number.isFinite(v)) allScores.push(v);
+  }
+  if (!allScores.length) {
+    return `<div class="legendHint">No equity scores available.</div>`;
+  }
+
+  const globalMin = Math.min(...allScores);
+  const globalMax = Math.max(...allScores);
+
+  // Map percentile filter limits back to raw score boundaries.
+  allScores.sort((a, b) => a - b);
+  const n = allScores.length;
+  const loIdx = Math.min(n - 1, Math.max(0, Math.floor((emin / 100) * n)));
+  const hiIdx = Math.min(n - 1, Math.max(0, Math.ceil((emax / 100) * n) - 1));
+  const rawLo = allScores[loIdx];
+  const rawHi = allScores[hiIdx];
+
+  // Collect visible values within the percentile filter.
   const values = [];
   for (const f of geo.features) {
     const v = Number(f?.properties?.equity_score);
@@ -251,48 +271,47 @@ function renderEquityHistogram() {
     values.push(v);
   }
   if (!values.length) {
-    return `<div class="legendHint">No equity scores in ${emin.toFixed(0)}-${emax.toFixed(0)}.</div>`;
+    return `<div class="legendHint">No equity scores in percentile ${emin.toFixed(0)}–${emax.toFixed(0)}.</div>`;
   }
 
-  const rawMin = Math.min(...values);
-  const rawMax = Math.max(...values);
-  const span = Math.max(1e-9, rawMax - rawMin);
+  // Build bins spanning rawLo → rawHi (the filtered raw range).
+  const span = Math.max(1e-9, rawHi - rawLo);
   const bins = EQUITY_HIST_BINS_MAX;
   const counts = Array.from({ length: bins }, () => 0);
   for (const v of values) {
-    const idx = Math.min(bins - 1, Math.floor(((v - rawMin) / span) * bins));
+    const idx = Math.min(bins - 1, Math.floor(((v - rawLo) / span) * bins));
     counts[idx] += 1;
   }
 
   const maxCount = Math.max(...counts, 1);
   const bars = counts
     .map((count, i) => {
-      const lo = rawMin + i * (span / bins);
-      const hi = rawMin + (i + 1) * (span / bins);
+      const lo = rawLo + i * (span / bins);
+      const hi = rawLo + (i + 1) * (span / bins);
       const h = Math.max(4, Math.round((count / maxCount) * 36));
-      return `<div class="histBar" style="height:${h}px" title="${fmtRawEdge(lo, span)}-${fmtRawEdge(hi, span)}: ${count}"></div>`;
+      return `<div class="histBar" style="height:${h}px" title="${fmtRawEdge(lo, span)}–${fmtRawEdge(hi, span)}: ${count}"></div>`;
     })
     .join("");
 
   const catRows = counts
     .map((count, i) => {
-      const lo = rawMin + i * (span / bins);
-      const hi = rawMin + (i + 1) * (span / bins);
-      return `<div class="histCat"><span>${fmtRawEdge(lo, span)}-${fmtRawEdge(hi, span)}</span><b>${count.toLocaleString()}</b></div>`;
+      const lo = rawLo + i * (span / bins);
+      const hi = rawLo + (i + 1) * (span / bins);
+      return `<div class="histCat"><span>${fmtRawEdge(lo, span)}–${fmtRawEdge(hi, span)}</span><b>${count.toLocaleString()}</b></div>`;
     })
     .join("");
 
   return `
     <div class="histWrap">
       <div class="histHeader">
-        <span>Distribution (raw equity_score)</span>
-        <span>n=${values.length.toLocaleString()}</span>
+        <span>Distribution (raw equity score)</span>
+        <span>n = ${values.length.toLocaleString()}</span>
       </div>
       <div class="histBars">${bars}</div>
       <div class="histLabels">
-        <span>${fmtRawEdge(rawMin, span)}</span>
-        <span>${fmtRawEdge((rawMin + rawMax) / 2, span)}</span>
-        <span>${fmtRawEdge(rawMax, span)}</span>
+        <span>${fmtRawEdge(rawLo, span)}</span>
+        <span>${fmtRawEdge((rawLo + rawHi) / 2, span)}</span>
+        <span>${fmtRawEdge(rawHi, span)}</span>
       </div>
       <div class="histCats">${catRows}</div>
     </div>
@@ -386,10 +405,13 @@ function setSelection(props) {
     if (els.selClusterNeighborhood) els.selClusterNeighborhood.textContent = neighborhood;
     if (els.selClusterEquityMean) els.selClusterEquityMean.textContent = row ? fmt(row.equity_mean, 2) : "—";
     if (els.selClusterTop) els.selClusterTop.innerHTML = formatTop3(zRow);
-    if (els.clusterLink) els.clusterLink.href = "#report";
+    if (els.clusterLink) {
+      els.clusterLink.textContent = "View Cluster Report";
+      els.clusterLink.href = "#clusterReportPanel";
+    }
     setReportCluster(props.cluster);
   } else if (mode === MODE_LISA && els.selLisaSection) {
-    if (els.selPanelTitle) els.selPanelTitle.textContent = "LISA Report";
+    if (els.selPanelTitle) els.selPanelTitle.textContent = "LISA Quadrant Report";
     show(els.selLisaSection, true);
     const q = props.lisa_quadrant ?? "NS";
     if (els.selLisaQuadrant) {
@@ -410,6 +432,10 @@ function setSelection(props) {
       const lp = Number(props.lisa_p);
       els.selLisaP.textContent = Number.isFinite(lp) ? lp.toFixed(3) : "—";
     }
+    if (els.clusterLink) {
+      els.clusterLink.textContent = "View LISA Quadrant Report";
+      els.clusterLink.href = "#lisaGroupsPanel";
+    }
   } else {
     if (els.selPanelTitle) els.selPanelTitle.textContent = "Equity Score Report";
     if (els.selEquitySection) {
@@ -421,6 +447,10 @@ function setSelection(props) {
       }
       if (els.selEquityNeighborhood) els.selEquityNeighborhood.textContent = neighborhood;
       if (els.selTop) els.selTop.innerHTML = formatTop3(zRow);
+      if (els.clusterLink) {
+        els.clusterLink.textContent = "View Equity Score Report";
+        els.clusterLink.href = "#lowEquityPanel";
+      }
     } else {
       // Backward compatibility for Clara's compact side panel.
       if (els.selCluster) els.selCluster.textContent = clusterName(props.cluster);
@@ -430,11 +460,10 @@ function setSelection(props) {
         els.selEquity.textContent = Number.isFinite(raw) ? `${raw.toFixed(2)}${pct !== null ? ` (${pct}th pctile)` : ""}` : "—";
       }
       if (els.selTop) els.selTop.textContent = humanizeTopFeatures(props.top3_features);
-      if (els.clusterLink) els.clusterLink.href = "#report";
-      setReportCluster(props.cluster);
-      setTimeout(() => {
-        els.reportAnchor?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 0);
+      if (els.clusterLink) {
+        els.clusterLink.textContent = "View Equity Score Report";
+        els.clusterLink.href = "#lowEquityPanel";
+      }
     }
   }
 
@@ -1254,6 +1283,11 @@ els.colorMode?.addEventListener("change", () => {
 });
 els.clearSelection?.addEventListener("click", () => clearSelection());
 els.reportCluster?.addEventListener("change", (e) => setReportCluster(e.target.value));
+els.clusterLink?.addEventListener("click", (e) => {
+  e.preventDefault();
+  const target = document.querySelector(els.clusterLink.getAttribute("href"));
+  if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+});
 
 init().catch((err) => {
   console.error(err);
