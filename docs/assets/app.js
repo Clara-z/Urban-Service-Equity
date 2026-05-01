@@ -348,7 +348,6 @@ function renderLegend() {
     <div class="legendTitle">Legend: Equity score (%)</div>
     <div class="ramp"></div>
     <div class="rampLabels"><span>${emin.toFixed(0)}</span><span>${((emin + emax) / 2).toFixed(0)}</span><span>${emax.toFixed(0)}</span></div>
-    ${renderEquityHistogram()}
     <div class="legendHint">Red = lower (within selected range)</div>
   `;
 }
