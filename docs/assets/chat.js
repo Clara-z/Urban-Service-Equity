@@ -6,6 +6,8 @@ const DATA_META = new URL("metadata.json", DATA_BASE).href;
 const DATA_SUMMARY = new URL("cluster_summary.csv", DATA_BASE).href;
 // Main detailed rent/311 context source for chat.
 const DATA_RENT_CSV = new URL("rent_listings_slim.csv", DATA_BASE).href;
+const DATA_RENT_FALLBACK_CSV = new URL("merged_rent_311.csv", DATA_BASE).href;
+const DATA_RENT_LEGACY_CSV = new URL("rent_dataset_module2.csv", DATA_BASE).href;
 const DATA_GRID_RENT_311_CSV = new URL("grid_level_rent_311.csv", DATA_BASE).href;
 const SOCIOPAPER_TXT = new URL("../sociopaper/zahnow1.txt", import.meta.url).href;
 
@@ -332,10 +334,14 @@ function compactMergedRow(row) {
 }
 
 function loadRentDataset() {
+  return loadRentDatasetFromUrl(DATA_RENT_CSV);
+}
+
+function loadRentDatasetFromUrl(url) {
   return new Promise((resolve, reject) => {
     const rows = [];
     const byGrid = new Map();
-    Papa.parse(DATA_RENT_CSV, {
+    Papa.parse(url, {
       download: true,
       header: true,
       dynamicTyping: true,
@@ -409,6 +415,26 @@ function loadRentDataset() {
       error: (err) => reject(err),
     });
   });
+}
+
+async function loadRentDatasetWithFallback() {
+  const candidates = [DATA_RENT_CSV, DATA_RENT_FALLBACK_CSV, DATA_RENT_LEGACY_CSV];
+  let lastErr = null;
+  for (const url of candidates) {
+    try {
+      const parsed = await loadRentDatasetFromUrl(url);
+      const rows = parsed?.rentRows?.length ?? 0;
+      const grids = parsed?.gridIndex?.size ?? 0;
+      if (rows > 0 || grids > 0) {
+        return { ...parsed, sourceUrl: url };
+      }
+      lastErr = new Error(`No usable rows in ${url}`);
+    } catch (err) {
+      lastErr = err;
+      console.warn(`rent dataset load failed from ${url}`, err);
+    }
+  }
+  throw lastErr || new Error("No rent dataset source could be loaded.");
 }
 
 async function loadGridRent311Dataset() {
@@ -1186,9 +1212,10 @@ async function init() {
     setStatus("Loading dashboard context and enrichment CSVs...");
     await Promise.all([loadContextData(), loadSociopaper()]);
     try {
-      const merged = await loadRentDataset();
+      const merged = await loadRentDatasetWithFallback();
       state.rentListings = merged?.rentRows ?? [];
       state.mergedGridIndex = merged?.gridIndex ?? new Map();
+      console.info(`rent dataset loaded from: ${merged?.sourceUrl || "(unknown)"}`);
     } catch (e) {
       state.rentListings = [];
       state.mergedGridIndex = new Map();
