@@ -544,6 +544,8 @@ function renderZChart(c) {
       scales: {
         x: {
           grid: { color: "rgba(255,255,255,.08)" },
+          min: -2,
+          max: 2,
           ticks: {
             color: "rgba(232,234,240,.75)",
             callback: (v) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}sigma`,

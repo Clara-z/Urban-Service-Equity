@@ -192,6 +192,7 @@ When (and only when) explaining THIS dashboard's JSON, map, cluster report, or S
 For questions that are not about this dashboard, ignore the paragraph above if it would block a clear answer.`;
 
 function setStatus(msg) {
+  if (!els.chatStatus) return;
   els.chatStatus.textContent = msg;
 }
 
@@ -1165,7 +1166,10 @@ function bindEvents() {
 
   els.sendBtn.addEventListener("click", () => send());
   els.userInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send();
+    if (e.key !== "Enter" || e.isComposing) return;
+    if (e.shiftKey) return; // Shift+Enter inserts newline.
+    e.preventDefault();
+    send();
   });
 
   const persistHandlers = [
