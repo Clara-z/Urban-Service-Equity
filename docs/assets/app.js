@@ -528,6 +528,35 @@ function renderZChart(c) {
     options: {
       indexAxis: "y",
       responsive: true,
+      onHover: (evt, elements, chart) => {
+        const canvas = chart?.canvas ?? evt?.native?.target;
+        if (!canvas) return;
+        canvas.style.cursor = elements && elements.length ? "pointer" : "default";
+      },
+      onClick: (_evt, elements) => {
+        if (!Array.isArray(elements) || !elements.length) return;
+        const idx = Number(elements[0]?.index);
+        if (!Number.isInteger(idx) || idx < 0 || idx >= items.length) return;
+        const picked = items[idx];
+        const featureCode = picked.k;
+        const featureLabel = INDICATOR_LABELS[featureCode] ?? featureCode;
+        const zValue = Number(picked.z);
+        const direction = zValue >= 0 ? "above" : "below";
+        const sigma = `${zValue >= 0 ? "+" : ""}${zValue.toFixed(2)}`;
+        const prompt = `Please explain this root-cause feature in plain language for a non-technical user: "${featureLabel}" (${featureCode}) is ${sigma} sigma ${direction} the city average for ${clusterName(c)}. What does this feature measure, why does this direction matter, and what practical action should a city team consider first?`;
+        window.dispatchEvent(
+          new CustomEvent("equity-root-cause-feature-clicked", {
+            detail: {
+              featureCode,
+              featureLabel,
+              zValue,
+              clusterId: String(c),
+              clusterName: clusterName(c),
+              prompt,
+            },
+          })
+        );
+      },
       plugins: {
         legend: { display: false },
         tooltip: {

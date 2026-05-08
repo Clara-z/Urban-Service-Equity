@@ -1,148 +1,209 @@
-# Housing equity & 311 service analysis
+# Urban Service Equity Dashboard
 
-This project turns **unit-level housing and 311 request data** into **grid-level** metrics, then combines two views of the city:
+## Start Here (Non-Technical User Guide)
 
-1. **Clusters (K-Means)** — groups of grid cells with similar rent, resolution time, property age, request intensity, and request-type mix. These clusters support a narrative about *where* patterns repeat.
-2. **Equity score (0–100)** — a composite index built from **service performance** (volume, speed, diversity, positive vs. negative request mix) and **service need** (density, crowding, age/rent control, affordability stress, tenure). PCA on standardized sub-indicators supplies the weights; the score is normalized for comparison across the city.
+If you only want to use the website and do not care about code, read this section only.
 
-**Root-cause layer:** For each cluster, z-scores highlight which indicators differ most from the city average. Notebook-derived **heuristics** (dire needs + intervention queue) give a policy-facing story that matches each cluster archetype.
+### What this website helps you do
 
-The **web dashboard** (`docs/`) is a static site: a map (equity or cluster coloring) and, on the same page, a cluster report with charts and heuristics. It reads CSV/JSON/GeoJSON produced by the pipeline—nothing is computed in the browser.
+- Find areas in San Francisco with lower service equity.
+- Compare neighborhoods and cluster patterns.
+- See likely root causes and suggested interventions.
+- Ask natural-language questions in the built-in chat panel.
 
----
+### Open the website
 
-## Repository layout
-
-| Path | Purpose |
-|------|---------|
-| `run_pipeline.py` | End-to-end pipeline: load CSV → aggregate to grid → cluster → equity score → export artifacts |
-| `DB_MVP.ipynb` | Original exploratory notebook (same logic as the script) |
-| `docs/` | Static dashboard (`index.html`, assets). **Do not commit** generated data under `docs/outputs/` (see below). |
-| `requirements.txt` | Python dependencies |
-
-Generated files are **not** checked into git. You create them locally or in Colab after running the pipeline.
-
----
-
-## Do I need to keep `outputs/`?
-
-**No.** Folders like `outputs/`, `outputs_full/`, and `docs/outputs/` are **build artifacts**. They are listed in `.gitignore`. You regenerate them whenever you:
-
-- refresh the analysis, or  
-- want the website to show maps and charts (the site expects files under `docs/outputs/` when you deploy).
-
-**What gets written** (typical `run_pipeline.py` run):
-
-- `grid_results.csv` — Scored grid cells with cluster, equity score, performance/need scores, indicators  
-- `cluster_summary.csv` — Per-cluster counts and equity summaries  
-- `cluster_feature_zscores.csv` — Cluster vs. city z-scores for root-cause charts  
-- `metadata.json` — PCA weights, top features per cluster, cluster heuristics  
-- `grid_point_advice.json` — Per–grid (point-level) needs and suggested actions from indicator z-scores, optionally enriched from extra CSVs (see below)  
-- `grid_points.geojson` — (optional, `--write-geojson`) Points for the map  
-- `grid_place_map.csv` — Grid-to-place lookup (`neighborhood` + `supervisor district`) for place-aware chat queries
-
-**Optional point-level enrichment (defaults under `data/`)** — place these files when you have them; missing files are skipped:
-
-- `data/rent_dataset_module2.csv` — Housing inventory (unit-level); should include a `grid_id` column; adds median rent and neighborhood text to point advice.  
-- `data/grid_level_rent_311.csv` — Any extra per-grid fields merged by `grid_id` into the point advice `enrichment` object.  
-- `data/311_data.csv` — 311 case-level rows with `grid_id` and a request-type column (e.g. `case_type_name`); adds per-grid case counts and the most common type.
-
-Override paths with `python run_pipeline.py --help` (`--rent-module2`, `--grid-rent-311`, `--311-data`) alongside your main `--input` merged CSV.
-
-### Rebuild place mapping after data updates
-
-If you update any of the files below:
-
-- `docs/outputs/grid_points.geojson`
-- `docs/outputs/sf_neighborhoods.geojson`
-- `docs/outputs/sf_supervisor_districts.geojson`
-
-rebuild the lookup table with:
-
-```bash
-python3 scripts/build_grid_place_map.py
-```
-
-This rewrites `docs/outputs/grid_place_map.csv` so chat/location lookups stay in sync with the latest boundaries and grid points.
-
----
-
-## Setup
-
-```bash
-python -m pip install -r requirements.txt
-```
-
-Python 3.10+ recommended.
-
----
-
-## RAG (papers → cited answers)
-
-This repo can support a **RAG backend** so your chatbot can cite **social science papers** while still using the static GitHub Pages dashboard.
-
-- Put PDFs in a Drive folder (or local) and index them into **Supabase pgvector**
-- Deploy a small API (Vercel) that does retrieve+generate and returns citations
-
-Start here: `rag/README.md`.
-
----
-
-## Running the pipeline
-
-### Default input (Google Colab + Drive)
-
-The default path matches a typical **Colab notebook** with Drive mounted:
-
-`/content/drive/My Drive/243 Group 2/Module 2/data/merged_rent_311.csv`
-
-If you run **without** `--input`, that path is used. You can also set:
-
-```bash
-export MERGED_RENT_311_CSV="/full/path/to/your/merged_rent_311.csv"
-python run_pipeline.py --output-dir outputs --write-geojson
-```
-
-### Local or custom path
-
-```bash
-python run_pipeline.py --input ./merged_rent_311.csv --output-dir outputs --write-geojson
-```
-
-### Build artifacts for the GitHub Pages site
-
-Write into `docs/outputs/` so the dashboard can load them:
-
-```bash
-python run_pipeline.py --input /path/to/merged_rent_311.csv --output-dir docs/outputs --write-geojson
-```
-
-Then serve the site locally (example):
+- **Public site (GitHub Pages):** open your project URL and go to `index.html`.
+- **Local run:** from the project root:
 
 ```bash
 python -m http.server 5173 --directory docs
 ```
 
-Open `http://localhost:5173/`. For GitHub Pages, configure the repo to publish the **`/docs`** folder on your default branch; the **first** push should include the pipeline outputs you generated (or CI can run the pipeline—optional).
+Then open [http://localhost:5173](http://localhost:5173).
+
+### How to use the dashboard (quick walkthrough)
+
+1. **Start on the map**
+   - Use **Color** to switch views (Equity score / LISA / Cluster).
+   - Use **Cluster filter** and **Equity min/max** to narrow what you see.
+   - Click **Apply** after changing filters.
+
+2. **Click a map point**
+   - The right-side panel updates with details for that grid cell.
+   - Use **View Equity Score Report** to jump to relevant report sections.
+
+3. **Read reports**
+   - **Equity Score Report:** neighborhoods with concentrated low-equity cells.
+   - **Needs and Intervention (By Equity Score):** focused guidance for selected low-equity cells.
+   - **LISA Quadrant Report:** local spatial pattern interpretation (LL/LH/HH/HL).
+   - **Cluster Report:** cluster-level stats, root-cause profile, and context.
+
+4. **Use chat while exploring**
+   - Floating chat is on the page; ask plain-language questions.
+   - Good prompts:
+     - "What is the most urgent issue in this selected area?"
+     - "Compare this cluster with city average in simple language."
+     - "What interventions should be prioritized first and why?"
+
+### What each view means (plain language)
+
+- **Equity score (0-100):** higher usually means better balance between service outcomes and neighborhood need.
+- **LISA quadrant:** whether low/high equity areas are surrounded by similar or different neighbors.
+- **Cluster:** groups of areas that behave similarly across multiple indicators.
+
+### Troubleshooting (user-level)
+
+- **Map is blank:** data files are probably missing from `docs/outputs/`.
+- **Chat not answering:** backend endpoint or keys may not be configured yet.
+- **Numbers look outdated:** pipeline outputs may need to be regenerated.
 
 ---
 
-## Web dashboard behavior
+## Operator Quick Start (Run/Refresh Data)
 
-- **Map:** Equity-first coloring (gradient) or cluster colors; filters and cluster selection.  
-- **Click a grid:** Updates the cluster report below and scrolls to it.  
-- **Report:** Summary stats, z-score chart, dire needs + intervention queue, PCA weights.
+Use this section if you are helping maintain the website data.
+
+### 1) Install dependencies
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+Python 3.10+ is recommended.
+
+### 2) Run pipeline and generate website artifacts
+
+```bash
+python run_pipeline.py --input /path/to/merged_rent_311.csv --output-dir docs/outputs --write-geojson
+```
+
+### 3) Serve locally
+
+```bash
+python -m http.server 5173 --directory docs
+```
+
+### 4) Validate expected files exist
+
+You should see outputs like:
+
+- `docs/outputs/grid_points.geojson`
+- `docs/outputs/cluster_summary.csv`
+- `docs/outputs/cluster_feature_zscores.csv`
+- `docs/outputs/metadata.json`
+- `docs/outputs/grid_point_advice.json`
+
+### 5) Rebuild place mapping when geometry files change
+
+If you update:
+
+- `docs/outputs/grid_points.geojson`
+- `docs/outputs/sf_neighborhoods.geojson`
+- `docs/outputs/sf_supervisor_districts.geojson`
+
+run:
+
+```bash
+python3 scripts/build_grid_place_map.py
+```
 
 ---
 
-## Input data
+## Project Purpose
 
-The CSV must match the schema expected by `DB_MVP.ipynb` / `run_pipeline.py` (unit-level rows with `grid_id`, lat/lon, rent, 311 request counts and percent mixes, etc.). Use your team’s merged `merged_rent_311.csv` or a sample with the same columns.
-
-**GitHub:** `merged_rent_311.csv` is listed in `.gitignore` because full datasets often exceed GitHub’s per-file size limit (~100MB). Keep the file locally (or in cloud storage) and pass it with `--input` or `MERGED_RENT_311_CSV`. For [Git LFS](https://git-lfs.com/) or a public download URL, you can remove that line if your policy allows versioning large data.
+This project combines housing and 311 service data to build a block-level equity diagnostic for San Francisco.
+The website is static and reads precomputed artifacts; all heavy computation is done in the pipeline.
 
 ---
 
-## License / attribution
+## Repository Structure
 
-Add your course or team attribution here if required.
+| Path | Purpose |
+|------|---------|
+| `run_pipeline.py` | End-to-end processing and artifact generation |
+| `docs/` | Static web app (map, reports, chat UI) |
+| `api/chat.ts` | RAG API endpoint (for deployed backend use) |
+| `rag/README.md` | RAG indexing and retrieval setup notes |
+| `requirements.txt` | Python dependencies |
+
+---
+
+## Data and Artifacts
+
+### Build artifacts (regenerated, not versioned)
+
+Folders like `outputs/`, `outputs_full/`, and `docs/outputs/` are generated artifacts and are ignored by git.
+
+### Typical generated files
+
+- `grid_results.csv`: scored grid-level table
+- `cluster_summary.csv`: per-cluster descriptive stats
+- `cluster_feature_zscores.csv`: cluster vs city feature differences
+- `metadata.json`: PCA weights, top features, heuristics
+- `grid_point_advice.json`: point-level needs/actions
+- `grid_points.geojson`: map points (when geojson export is enabled)
+- `grid_place_map.csv`: lookup for place-aware interactions
+
+### Optional enrichment inputs
+
+When available, these can enrich point-level advice:
+
+- `data/rent_dataset_module2.csv`
+- `data/grid_level_rent_311.csv`
+- `data/311_data.csv`
+
+Missing optional files are skipped by design.
+
+---
+
+## Input Expectations
+
+`run_pipeline.py` expects a merged unit-level dataset with required housing and 311-related columns (including `grid_id` and location fields).
+Large datasets are typically kept out of git and provided through local paths or cloud storage.
+
+---
+
+## Technical Appendix
+
+### Analytics design (high level)
+
+- **Equity score:** composite index from service-performance and service-need components.
+- **Clustering:** K-Means groups grid cells into interpretable archetypes.
+- **Root-cause layer:** z-score contrasts identify where each cluster diverges from city baseline.
+- **Heuristics:** precomputed intervention recommendations attach a policy narrative.
+
+### Frontend architecture
+
+- Static app under `docs/` (no backend required for map/report rendering).
+- Browser loads generated CSV/JSON/GeoJSON artifacts.
+- Map + report + chat are linked through shared client-side state/events.
+
+### RAG hosting story (Vercel + Supabase)
+
+This project’s chat experience is designed to support paper-grounded answers through a hosted retrieval pipeline:
+
+1. **Document indexing**
+   - Research PDFs are chunked and embedded.
+   - Chunks + embeddings are stored in **Supabase** with pgvector.
+
+2. **Retrieval API**
+   - A server endpoint (deployed on **Vercel**) receives user questions.
+   - It performs vector retrieval from Supabase and assembles relevant context.
+
+3. **Generation**
+   - The endpoint calls the selected model with retrieved context + dashboard context.
+   - It returns answer text plus citations metadata.
+
+4. **Client behavior**
+   - The website chat calls the deployed API endpoint (`/api/chat`) rather than calling model providers directly from the browser.
+
+Important note: deployment/settings can be adjusted later (keys, env vars, model choices, retrieval tuning). This README describes the intended hosted architecture without changing current code/config.
+
+For deeper setup details, start with `rag/README.md`.
+
+---
+
+## License / Attribution
+
+Add your course/team attribution and license text here.

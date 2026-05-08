@@ -100,6 +100,10 @@ code{background:rgba(255,255,255,.06);padding:2px 6px;border-radius:6px}
   gap:12px;
   max-width:980px;
 }
+.bento.bentoSingle{
+  grid-template-columns:1fr;
+  max-width:920px;
+}
 .bentoCard{
   position:relative;
   border:1px solid rgba(255,255,255,.10);
@@ -488,6 +492,42 @@ body.heroCollapsed .scrollCue{opacity:0;pointer-events:none}
   grid-template-columns: 1fr;
   max-width:1240px;
   margin:0 auto;
+  gap:52px;
+}
+.reportMain .panel{
+  background:transparent;
+  border:none;
+  border-radius:0;
+  overflow:visible;
+}
+.reportMain .panelHeader{
+  border-bottom:none;
+  padding:6px 2px 4px;
+}
+.reportMain .panelTitle{
+  font-size:24px;
+  letter-spacing:-0.2px;
+}
+.reportMain .panelMeta{
+  font-size:13px;
+}
+.reportMain .smallNote{
+  padding-top:6px;
+  padding-bottom:18px;
+}
+.reportMain .reportControls{
+  padding-top:8px;
+  padding-bottom:18px;
+}
+.reportMain .gridStats{
+  padding-bottom:18px;
+}
+.reportMain .chartWrap,
+.reportMain .split2,
+.reportMain .congTable,
+.reportMain .lowEqCells,
+.reportMain .cellLookup{
+  padding-bottom:20px;
 }
 .reportControls{
   padding:0 12px 12px;
@@ -709,6 +749,14 @@ body.heroCollapsed .scrollCue{opacity:0;pointer-events:none}
   color:var(--muted);
   line-height:1.4;
 }
+.floatingChatDock.chatAttention{
+  animation: chatDockPulse 900ms ease;
+}
+@keyframes chatDockPulse{
+  0%{ box-shadow:0 0 0 0 rgba(91,140,255,.55), 0 18px 44px rgba(0,0,0,.45); }
+  70%{ box-shadow:0 0 0 14px rgba(91,140,255,0), 0 18px 44px rgba(0,0,0,.45); }
+  100%{ box-shadow:0 18px 44px rgba(0,0,0,.45); }
+}
 .chatFooter{
   border-top:1px solid rgba(255,255,255,.08);
   padding:10px 12px 12px;
@@ -752,6 +800,9 @@ body.heroCollapsed .scrollCue{opacity:0;pointer-events:none}
 .floatingChatDock .chatMessages{
   min-height:170px;
   max-height:260px;
+}
+.floatingChatDock #chatStatus{
+  padding-top:8px;
 }
 .floatingChatDock #publicChatInput{
   min-height:66px;

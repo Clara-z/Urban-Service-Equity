@@ -196,6 +196,23 @@ function setStatus(msg) {
   els.chatStatus.textContent = msg;
 }
 
+function openFloatingChatDock() {
+  const dock = els.floatingChatDock;
+  if (!dock) return;
+  if (dock.classList.contains("isCollapsed")) {
+    dock.classList.remove("isCollapsed");
+    if (els.floatingChatToggle) {
+      els.floatingChatToggle.textContent = "−";
+      els.floatingChatToggle.setAttribute("aria-expanded", "true");
+    }
+  }
+  dock.classList.remove("chatAttention");
+  // Force reflow so repeated clicks replay the pulse animation.
+  void dock.offsetWidth;
+  dock.classList.add("chatAttention");
+  window.setTimeout(() => dock.classList.remove("chatAttention"), 1000);
+}
+
 function loadSavedState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -1155,6 +1172,18 @@ async function send() {
   }
 }
 
+function autoAskFromRootCause(promptText) {
+  const text = String(promptText || "").trim();
+  if (!text) return;
+  openFloatingChatDock();
+  setStatus("Explaining selected feature in chat...");
+  if (els.userInput) {
+    els.userInput.value = text;
+    els.userInput.focus();
+  }
+  void send();
+}
+
 function bindEvents() {
   els.floatingChatToggle?.addEventListener("click", () => {
     const dock = els.floatingChatDock;
@@ -1203,6 +1232,11 @@ function bindEvents() {
     renderChat();
     saveState();
     setStatus("Chat cleared");
+  });
+
+  window.addEventListener("equity-root-cause-feature-clicked", (evt) => {
+    const prompt = evt?.detail?.prompt;
+    autoAskFromRootCause(prompt);
   });
 }
 

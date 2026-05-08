@@ -18,7 +18,7 @@
     <header class="topbar">
       <div class="brand">
         <div class="title">Urban Service Equity Dashboard</div>
-        <div class="subtitle">A Block-Level Equity Diagnostic for Resource Allocation in the City of San Francisco</div>
+        <div class="subtitle">Use map, reports, and chat to find underserved areas in San Francisco</div>
       </div>
     </header>
 
@@ -32,51 +32,37 @@
 
       <div class="heroInner">
         <div class="heroEyebrow">City &amp; County of San Francisco</div>
-        <h1 class="heroTitle">Where are 311 services falling short — and why?</h1>
+        <h1 class="heroTitle">Understand where San Francisco is under pressure, and what actions matter most.</h1>
         <p class="heroLead">
-          This dashboard maps every city block against an equity score that balances
-          <em>service performance</em> (311 volume, resolution speed, service mix) with
-          <em>housing need</em> (density, crowding, affordability, building age). Use it to
-          identify underserved areas, understand structural root causes, and prioritize
-          resource allocation across San Francisco's 41 neighborhoods.
+          This dashboard helps you understand how service outcomes and housing stress vary across
+          San Francisco neighborhoods. Explore the map, click any grid cell, and use the reports
+          and chat assistant to turn patterns into practical next steps.
         </p>
 
-        <div class="bento" aria-label="Three analytical layers">
+        <div class="bento bentoSingle" aria-label="How to use this dashboard">
           <div class="bentoCard">
-            <h2 class="bentoTitle">How to use this tool</h2>
+            <h2 class="bentoTitle">How to use this page</h2>
             <p class="bentoText">
-              The map supports three analytical views. Start with <b>Equity Score</b> to locate
-              underserved blocks, switch to <b>LISA Quadrant</b> to see spatial clustering patterns,
-              then drill into <b>Cluster</b> to compare neighborhood archetypes and root causes.
+              Follow this order for fastest results:<br />
+              <b>1) Map filters</b><br />
+              <b>2) Click a block</b><br />
+              <b>3) Read reports</b><br />
+              <b>4) Ask chat for explanation or prioritization</b><br /><br />
+              If anything is unclear at any point, ask the chatbox directly and it will explain the dashboard in plain language.
             </p>
             <div class="bentoKpis">
               <div class="kpi">
-                <div class="kpiVal">Equity Score</div>
-                <div class="kpiLab">0–100 per block, combining service &amp; need</div>
+                <div class="kpiVal">Map</div>
+                <div class="kpiLab">Find low-equity blocks and spatial patterns</div>
               </div>
               <div class="kpi">
-                <div class="kpiVal">LISA Quadrant</div>
-                <div class="kpiLab">Spatial autocorrelation (hot/cold spots)</div>
+                <div class="kpiVal">Reports</div>
+                <div class="kpiLab">See neighborhood and cluster-level diagnostics</div>
               </div>
               <div class="kpi">
-                <div class="kpiVal">Cluster</div>
-                <div class="kpiLab">Neighborhood archetypes by feature profile</div>
+                <div class="kpiVal">Chat</div>
+                <div class="kpiLab">Ask plain-language questions whenever something is confusing</div>
               </div>
-            </div>
-          </div>
-          <div class="bentoSide">
-            <div class="bentoMini">
-              <span class="bentoTag">Diagnose</span>
-              <h3>Block → Report → Intervention</h3>
-              <p>Click any block on the map. The side panel shows its score, neighborhood, and
-                top distinguishing features. Hit the report button to see contextualized
-                needs and recommended actions.</p>
-            </div>
-            <div class="bentoMini">
-              <span class="bentoTag">Ask</span>
-              <h3>AI-Assisted Q&amp;A</h3>
-              <p>Use the chat panel to ask questions grounded in this dashboard's data and
-                indexed planning literature — no query language required.</p>
             </div>
           </div>
         </div>
@@ -84,6 +70,7 @@
         <div class="heroActions">
           <a class="btn" href="#mapPanel">Go to Map</a>
           <a class="btn secondary" href="#report">Jump to Reports</a>
+          <a class="btn secondary" href="./chat.html">Open Prompt Lab</a>
         </div>
 
         <div class="heroMeta">
@@ -95,6 +82,26 @@
         <span class="scrollText">Scroll</span>
         <span class="chev" aria-hidden="true"></span>
       </a>
+    </section>
+
+    <section class="panel metricsPanel">
+      <div class="panelHeader">
+        <div class="panelTitle">Start in 3 steps</div>
+        <div class="panelMeta">Quick guide for first-time users</div>
+      </div>
+      <div class="split2">
+        <div class="smallNote" style="padding-top:12px">
+          <b>Step 1:</b> In <b>Color</b>, choose Equity / LISA / Cluster and apply filters.<br />
+          <b>Step 2:</b> Click a grid cell to load contextual details and jump links.<br />
+          <b>Step 3:</b> Scroll to reports, then use chat to ask what to prioritize first.
+        </div>
+        <div class="smallNote" style="padding-top:12px">
+          <b>What each tool is for:</b><br />
+          - <b>Map:</b> spot underserved places quickly<br />
+          - <b>Reports:</b> understand neighborhood and cluster evidence<br />
+          - <b>Chat:</b> get plain-language interpretation and next-action ideas
+        </div>
+      </div>
     </section>
 
     <section class="panel metricsPanel">
@@ -465,6 +472,7 @@
       </div>
 
       <div id="floatingPublicChatBody" class="floatingChatBody">
+        <div id="chatStatus" class="chatHint">Ready</div>
         <div id="chatMessages" class="chatMessages"></div>
         <div class="chatComposer">
           <label class="visuallyHidden" for="userInput">Your question</label>
@@ -500,8 +508,8 @@
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""
     ></script>
-    <script type="module" src="assets/app.js?v=31"></script>
-    <script type="module" src="assets/chat.js?v=31"></script>
+    <script type="module" src="assets/app.js?v=32"></script>
+    <script type="module" src="assets/chat.js?v=32"></script>
   </body>
 </html>
 
